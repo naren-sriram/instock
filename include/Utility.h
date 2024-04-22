@@ -6,6 +6,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
+
+
 struct Position {
     int x, y, time;
     Position(int x = 0, int y = 0, int time = 0) : x(x), y(y), time(time) {}
@@ -21,12 +24,24 @@ struct Position {
 struct King {
     Position start;
     Position goal;
+    std::vector<Position> path; // Store the planned path for each king
+
     King(Position s, Position g) : start(s), goal(g) {}
+};
+
+struct PathNode {
+    Position pos;
+    int cost;
+    int priority;  // This combines cost + heuristic for A* sorting
+
+    bool operator>(const PathNode& other) const {
+        return priority > other.priority;  // Min-heap based on priority
+    }
 };
 
 struct Node {
     std::vector<std::vector<Position>> paths;  // paths for each king
-    std::map<std::pair<int, int>, std::set<Position>> constraints;  // conflicts resolved per king
+    std::unordered_map<int, std::set<Position>> constraints;  // conflicts resolved per king
     int cost;
     Node() : cost(0) {}
 

@@ -5,34 +5,33 @@ import matplotlib.animation as animation
 def read_map(filename):
     with open(filename, 'r') as file:
         size = int(file.readline().strip())
-        board = np.zeros((size, size))
+        board = np.zeros((size, size), dtype=int)
         for line in file:
             x, y = map(int, line.strip().split(','))
             board[x][y] = 1  # Mark blocked cells
     return board, size
 
-def read_trajectories(filename):
-    trajectories = []
+def read_kings(filename):
     with open(filename, 'r') as file:
-        for line in file:
-            traj = []
-            description = line.split(':')[0].strip().split(' ')
-            print('description: ',description)
-            if description[0][0] == 'P':
+        return sum(1 for _ in file)  # Count lines in the file to determine number of kings
+
+def read_trajectories(filename, num_kings):
+    trajectories = [[] for _ in range(num_kings)]
+    with open(filename, 'r') as file:
+        lines = [line.strip() for line in file if 'Planning time' not in line and line.strip()]
+        for i, line in enumerate(lines):
+            coords = line.split(',')
+            if len(coords) < 2:
                 continue
-            positions = line.split(':')[1].strip().split(' ')
-            for pos in positions:
-                if pos:
-                    x, y = map(int, pos.strip('()').split(','))
-                    traj.append((x, y))
-            trajectories.append(traj)
+            x, y = map(int, coords[:2])
+            trajectories[i % num_kings].append((x, y))
     return trajectories
 
 def visualize(board, trajectories, size):
     fig, ax = plt.subplots()
     colors = plt.cm.get_cmap('Set1', len(trajectories))  # distinct colors for each king
 
-    # Create a background grid
+    # Set up the grid
     ax.set_xticks(np.arange(-.5, size, 1), minor=True)
     ax.set_yticks(np.arange(-.5, size, 1), minor=True)
     ax.grid(which='minor', color='gray', linestyle='-', linewidth=2)
@@ -41,20 +40,19 @@ def visualize(board, trajectories, size):
     ax.set_xticklabels([])
     ax.set_yticklabels([])
 
-    # Set initial background colors
+    # Create a background for blocked cells
     background = np.zeros((size, size, 3))
     for x in range(size):
         for y in range(size):
             if board[x][y] == 1:
-                background[x][y] = [1, 0, 0]  # Red for blocked cells
+                background[x, y] = [1, 0, 0]  # Red for blocked cells
             else:
-                background[x][y] = [0.9, 0.9, 0.9]  # Light grey for open cells
+                background[x, y] = [0.9, 0.9, 0.9]  # Light grey for open cells
+
     img = ax.imshow(background, interpolation='none', extent=[-0.5, size-0.5, size-0.5, -0.5])
 
-    scatter_plots = []
-    for i in range(len(trajectories)):
-        scatter_plot, = ax.plot([], [], 'o', color=colors(i), markersize=20)  # Marker size adjusted
-        scatter_plots.append(scatter_plot)
+    # Initialize scatter plots for each king
+    scatter_plots = [ax.plot([], [], 'o', color=colors(i), markersize=20)[0] for i in range(len(trajectories))]
 
     def init():
         for scatter_plot in scatter_plots:
@@ -62,17 +60,31 @@ def visualize(board, trajectories, size):
         return scatter_plots
 
     def update(frame):
+        num_kings = len(trajectories)
         for i, traj in enumerate(trajectories):
-            if frame < len(traj):
-                x, y = traj[frame]
-                scatter_plots[i].set_data(y, x)
+            if frame > 0:  # Start moving kings after the initial frame
+                move_index = (frame - 1) % num_kings  # Determine which king moves in this frame
+                if i == move_index:  # Only update the current king's position
+                    step = (frame - 1) // num_kings  # Calculate the step for the current king
+                    if step < len(traj):
+                        x, y = traj[step]
+                        scatter_plots[i].set_data(x , y )  # Center the dot in the square
+                    else:
+                        # Keep the king in the last known position if no more moves are left
+                        x, y = traj[-1]
+                        scatter_plots[i].set_data(x , y )
+            else:
+                # Initial frame, all kings are stationary at their start positions
+                x, y = traj[0]
+                scatter_plots[i].set_data(x, y )  # Center the dot in the square
         return scatter_plots
 
-    ani = animation.FuncAnimation(fig, update, frames=max(len(traj) for traj in trajectories), init_func=init, blit=True, interval=500, repeat_delay=1000)
-
+    ani = animation.FuncAnimation(fig, update, frames=(num_kings * max(len(traj) for traj in trajectories) + 1), init_func=init, blit=True, interval=500, repeat_delay=1000)
     plt.show()
 
+
 # Usage
-board, size = read_map('problem-tests/3/map.txt')
-trajectories = read_trajectories('trajectory_3.txt')
+board, size = read_map('problem-tests/test/map.txt')
+num_kings = read_kings('problem-tests/test/kings.txt')
+trajectories = read_trajectories('solution_test.txt', num_kings)
 visualize(board, trajectories, size)

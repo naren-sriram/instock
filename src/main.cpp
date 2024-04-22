@@ -1,43 +1,55 @@
-// Main.cpp
-
+#include <iostream>
+#include <fstream>
 #include <vector>
-#include <CBSAlgorithm.h>
+#include <MultiAgentPathPlanning.h> 
 #include <chrono>
 
 int main() {
-    
-    std::string mapFile = "/home/naren/instock/problem-tests/3/map.txt";
-    std::string kingsFile = "/home/naren/instock/problem-tests/3/kings.txt";
+    std::string mapFile = "/home/naren/instock/problem-tests/1/map.txt";
+    std::string kingsFile = "/home/naren/instock/problem-tests/1/kings.txt";
     std::vector<std::vector<bool>> board = readBoard(mapFile);
     std::vector<King> kings = readKings(kingsFile);
 
-    std::cout<<"kings size: "<<kings.size()<<"\n";
+    MultiAgentPathPlanning planner(kings, board, board.size());
+    auto start = std::chrono::steady_clock::now();
 
+    if (!planner.findPaths()) {
+        std::cout << "Failed to find paths for all kings.\n";
+        return 1;
+    }
 
-    // Instantiate CBS algorithm and run
-    CBSAlgorithm cbs(kings, board, board.size());
-    auto start = std::chrono::high_resolution_clock::now(); 
-    if(cbs.findPaths()) {
-        std::cout<<"Exited cbs \n";
-    }
-    else {
-        std::cout<<"Could not find solution \n";
-        return 0;
-    }
-    auto end = std::chrono::high_resolution_clock::now();    // End timing
+    auto end = std::chrono::steady_clock::now();
+    std::cout<<"PLannign successful! \n";
     std::chrono::duration<double> elapsed = end - start;
-    std::cout << "Planning time: " << elapsed.count() << " seconds." << std::endl;
+    std::cout << "Planning time: " << elapsed.count() << " seconds.\n";
 
-    std::ofstream trajFile("trajectory_3.txt");
-    for (size_t i = 0; i < kings.size(); ++i) {
-        trajFile << "King " << i + 1 << " path: ";
-        for (const auto& pos : cbs.solutionPaths[i]) {
-            trajFile << "(" << pos.x << "," << pos.y << ") ";
-        }
-        trajFile << std::endl;
+    std::ofstream solutionFile("solution_test.txt");
+    if (!solutionFile.is_open()) {
+        std::cerr << "Unable to open solution file.\n";
+        return 1;
     }
-    trajFile<< "Planning time: "<<elapsed.count()<<" seconds."<<std::endl;
-    trajFile.close();
+
+    int maxSteps = 0;
+    for (const auto& path : planner.allPaths) {
+        maxSteps = std::max(maxSteps, static_cast<int>(path.size()));
+    }
+
+    // Iterate over time steps, for each step iterate over all kings
+    for (int step = 0; step < maxSteps; ++step) {
+        for (size_t kingIndex = 0; kingIndex < planner.allPaths.size(); ++kingIndex) {
+            if (step < planner.allPaths[kingIndex].size()) {
+                const auto& pos = planner.allPaths[kingIndex][step];
+                solutionFile << pos.x << ", " << pos.y << std::endl;
+            } else if (!planner.allPaths[kingIndex].empty()) {
+                // If no more steps, repeat the last position
+                const auto& lastPos = planner.allPaths[kingIndex].back();
+                solutionFile << lastPos.x << ", " << lastPos.y << std::endl;
+            }
+        }
+    }
+
+    solutionFile << "Planning time: " << elapsed.count() << " seconds." << std::endl;
+    solutionFile.close();
 
     return 0;
 }

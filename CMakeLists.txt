@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(include)
 
 # Add source files to the executable
-add_executable(mapp src/main.cpp src/AStar.cpp src/CBSAlgorithm.cpp)
+add_executable(mapp src/main.cpp src/MultiAgentPathPlanning.cpp)
 
 # Optional: Define macros or compiler options
 # add_definitions(-DMY_MACRO=1)
