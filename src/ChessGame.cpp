@@ -45,12 +45,16 @@ void ChessGame::findPaths() {
         int kingIndex = 0;
         for (auto& king : kings) {
             
-            if (king.current == king.goal) continue; // Skip if already at goal
+            if (king.current == king.goal) {
+                kingIndex++;
+                continue; 
+            }// Skip if already at goal
             allReached = false;
             updateAdjacentCells(king.current, kingIndex, false); 
             Position nextStep = findReevaluationMove(king, kingIndex);
             if (!(nextStep == king.current)) {  // A valid move is found
                 king.closedList.insert(king.current);
+                std::cout<<"king "<<kingIndex<<" moved from: "<<king.current.x<<", "<<king.current.y<<" : TO : "<<nextStep.x<<", "<<nextStep.y<<"\n";
                 king.current = nextStep;    // Move king
                 king.path.push_back(nextStep);
                 updateAdjacentCells(king.current, kingIndex, true);
@@ -61,17 +65,20 @@ void ChessGame::findPaths() {
                     nextStep = findReevaluationMove(king, kingIndex);
                     if (!(nextStep == king.current)) {
                         king.closedList.insert(king.current);
+                        std::cout<<"king "<<kingIndex<<" moved from: "<<king.current.x<<", "<<king.current.y<<" : TO : "<<nextStep.x<<", "<<nextStep.y<<"\n";
                         king.current = nextStep;
                         king.path.push_back(nextStep);
                         updateAdjacentCells(king.current, kingIndex, true);
                         king.waitCount = 0; // Reset wait count on successful move
                     } else {
                         king.waitCount++; 
+                        std::cout<<"king "<<kingIndex<<" waiting at "<<king.current.x<<", "<<king.current.y<<" for "<<king.waitCount<<" timesteps.\n";
                         king.path.push_back(king.current);
                         updateAdjacentCells(king.current, kingIndex, true); // Continue waiting if no moves are possible
                     }
                 } else {
                     king.waitCount++;
+                    std::cout<<"king "<<kingIndex<<" waiting at "<<king.current.x<<", "<<king.current.y<<" for "<<king.waitCount<<" timesteps.\n";
                     king.path.push_back(king.current);
                     updateAdjacentCells(king.current, kingIndex, true); // Log the wait by repeating the current position
                 }

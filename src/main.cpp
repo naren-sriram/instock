@@ -5,8 +5,8 @@
 #include <ChessGame.h> // Include the new GameSimulator class
 
 int main() {
-    std::string mapFile = "/home/naren/instock/problem-tests/test/map.txt";  // Adjusted path for simplicity
-    std::string kingsFile = "/home/naren/instock/problem-tests/test/kings.txt";  // Adjusted path for simplicity
+    std::string mapFile = "/home/naren/instock/problem-tests/1/map.txt";  // Adjusted path for simplicity
+    std::string kingsFile = "/home/naren/instock/problem-tests/1/kings.txt";  // Adjusted path for simplicity
     std::vector<std::vector<bool>> board = readBoard(mapFile);
     std::vector<King> kings = readKings(kingsFile);
     std::cout<<"read operations completed. \n";
@@ -17,7 +17,7 @@ int main() {
         
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-    std::string solution_path = "solution_test.txt";
+    std::string solution_path = "solution_1.txt";
     ChessGame.writePathsToFile(solution_path);
 
     std::ofstream file(solution_path, std::ios_base::app | std::ios_base::out);
