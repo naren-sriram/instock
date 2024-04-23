@@ -80,11 +80,11 @@ def visualize(board, trajectories, size):
         return scatter_plots
 
     ani = animation.FuncAnimation(fig, update, frames=(num_kings * max(len(traj) for traj in trajectories) + 1), init_func=init, blit=True, interval=500, repeat_delay=1000)
-    ani.save('kings_movement.gif', writer='imagemagick', dpi=80) 
+    # ani.save('kings_movement_6.gif', writer='imagemagick', dpi=80) 
     plt.show()
 
 # Usage
-board, size = read_map('problem-tests/test/map.txt')
-num_kings = read_kings('problem-tests/test/kings.txt')
-trajectories = read_trajectories('solution_test.txt', num_kings)
+board, size = read_map('problem-tests/7/map.txt')
+num_kings = read_kings('problem-tests/7/kings.txt')
+trajectories = read_trajectories('solution_7.txt', num_kings)
 visualize(board, trajectories, size)

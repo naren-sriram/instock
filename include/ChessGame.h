@@ -9,7 +9,11 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include<set>
+#include <set>
+#include <queue>
+
+
+
 
 struct Position {
     int x, y;
@@ -17,6 +21,15 @@ struct Position {
     bool operator==(const Position& other) const { return x == other.x && y == other.y; }
     bool operator<(const Position& other) const { return x < other.x || (x == other.x && y < other.y); }
 };
+
+struct HeuristicNode {
+    Position pos;
+    int heuristic;
+    bool operator>(const HeuristicNode& other) const {
+        return heuristic > other.heuristic;
+    }
+};
+
 
 struct Node {
     Position pos;
@@ -126,7 +139,7 @@ private:
     int heuristic(const Position& current, int kingIndex) const;
     
     std::vector<Position> getNeighbors(const Position& pos) const ;
-    Position findReevaluationMove(const King& king, int kingIndex);
+    Position findReevaluationMove(const King& king, int kingIndex, bool isWaiting);
     void computeDistanceMaps();
     std::vector<std::vector<int>> computeDijkstraMap(const Position& goal) ;
 
