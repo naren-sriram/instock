@@ -8,7 +8,7 @@ def read_map(filename):
         board = np.zeros((size, size), dtype=int)
         for line in file:
             x, y = map(int, line.strip().split(','))
-            board[x][y] = 1  # Mark blocked cells
+            board[y, x] = 1  # Mark blocked cells, flip x and y to align with typical row-column indexing
     return board, size
 
 def read_kings(filename):
@@ -24,7 +24,7 @@ def read_trajectories(filename, num_kings):
             if len(coords) < 2:
                 continue
             x, y = map(int, coords[:2])
-            trajectories[i % num_kings].append((x, y))
+            trajectories[i % num_kings].append((x, y))  # No flipping needed here, assuming direct x,y storage
     return trajectories
 
 def visualize(board, trajectories, size):
@@ -44,10 +44,10 @@ def visualize(board, trajectories, size):
     background = np.zeros((size, size, 3))
     for x in range(size):
         for y in range(size):
-            if board[x][y] == 1:
-                background[x, y] = [1, 0, 0]  # Red for blocked cells
+            if board[y, x] == 1:  # Notice flipping y, x for visualization
+                background[y, x] = [1, 0, 0]  # Red for blocked cells
             else:
-                background[x, y] = [0.9, 0.9, 0.9]  # Light grey for open cells
+                background[y, x] = [0.9, 0.9, 0.9]  # Light grey for open cells
 
     img = ax.imshow(background, interpolation='none', extent=[-0.5, size-0.5, size-0.5, -0.5])
 
@@ -68,20 +68,20 @@ def visualize(board, trajectories, size):
                     step = (frame - 1) // num_kings  # Calculate the step for the current king
                     if step < len(traj):
                         x, y = traj[step]
-                        scatter_plots[i].set_data(x , y )  # Center the dot in the square
+                        scatter_plots[i].set_data(x, y)  # Adjusted to directly use x, y
                     else:
                         # Keep the king in the last known position if no more moves are left
                         x, y = traj[-1]
-                        scatter_plots[i].set_data(x , y )
+                        scatter_plots[i].set_data(x, y)
             else:
                 # Initial frame, all kings are stationary at their start positions
                 x, y = traj[0]
-                scatter_plots[i].set_data(x, y )  # Center the dot in the square
+                scatter_plots[i].set_data(x, y)  # Directly use x, y
         return scatter_plots
 
     ani = animation.FuncAnimation(fig, update, frames=(num_kings * max(len(traj) for traj in trajectories) + 1), init_func=init, blit=True, interval=500, repeat_delay=1000)
+    ani.save('kings_movement.gif', writer='imagemagick', dpi=80) 
     plt.show()
-
 
 # Usage
 board, size = read_map('problem-tests/test/map.txt')

@@ -1,55 +1,33 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <MultiAgentPathPlanning.h> 
 #include <chrono>
+#include <ChessGame.h> // Include the new GameSimulator class
 
 int main() {
-    std::string mapFile = "/home/naren/instock/problem-tests/1/map.txt";
-    std::string kingsFile = "/home/naren/instock/problem-tests/1/kings.txt";
+    std::string mapFile = "/home/naren/instock/problem-tests/test/map.txt";  // Adjusted path for simplicity
+    std::string kingsFile = "/home/naren/instock/problem-tests/test/kings.txt";  // Adjusted path for simplicity
     std::vector<std::vector<bool>> board = readBoard(mapFile);
     std::vector<King> kings = readKings(kingsFile);
+    std::cout<<"read operations completed. \n";
+    ChessGame ChessGame(board.size(), board);
+    ChessGame.placeKings(kings);
+    auto start = std::chrono::high_resolution_clock::now();
+    ChessGame.findPaths();
+        
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::string solution_path = "solution_test.txt";
+    ChessGame.writePathsToFile(solution_path);
 
-    MultiAgentPathPlanning planner(kings, board, board.size());
-    auto start = std::chrono::steady_clock::now();
-
-    if (!planner.findPaths()) {
-        std::cout << "Failed to find paths for all kings.\n";
-        return 1;
+    std::ofstream file(solution_path, std::ios_base::app | std::ios_base::out);
+    if (file.is_open()) {
+        file << "Execution Time: " << duration.count() << " ms" << std::endl;
+        file.close();
+    } else {
+        std::cerr << "Failed to open file for appending execution time.\n";
     }
 
-    auto end = std::chrono::steady_clock::now();
-    std::cout<<"PLannign successful! \n";
-    std::chrono::duration<double> elapsed = end - start;
-    std::cout << "Planning time: " << elapsed.count() << " seconds.\n";
-
-    std::ofstream solutionFile("solution_test.txt");
-    if (!solutionFile.is_open()) {
-        std::cerr << "Unable to open solution file.\n";
-        return 1;
-    }
-
-    int maxSteps = 0;
-    for (const auto& path : planner.allPaths) {
-        maxSteps = std::max(maxSteps, static_cast<int>(path.size()));
-    }
-
-    // Iterate over time steps, for each step iterate over all kings
-    for (int step = 0; step < maxSteps; ++step) {
-        for (size_t kingIndex = 0; kingIndex < planner.allPaths.size(); ++kingIndex) {
-            if (step < planner.allPaths[kingIndex].size()) {
-                const auto& pos = planner.allPaths[kingIndex][step];
-                solutionFile << pos.x << ", " << pos.y << std::endl;
-            } else if (!planner.allPaths[kingIndex].empty()) {
-                // If no more steps, repeat the last position
-                const auto& lastPos = planner.allPaths[kingIndex].back();
-                solutionFile << lastPos.x << ", " << lastPos.y << std::endl;
-            }
-        }
-    }
-
-    solutionFile << "Planning time: " << elapsed.count() << " seconds." << std::endl;
-    solutionFile.close();
-
+    std::cout << "Pathfinding complete. Results written to "<<solution_path << std::endl;
     return 0;
 }
