@@ -1,70 +1,52 @@
-#ifndef UTILITY_H
-#define UTILITY_H
 #include <vector>
+#include <queue>
 #include <map>
-#include <set>
-#include <iostream>
+#include <algorithm>
 #include <fstream>
 #include <sstream>
-#include <unordered_map>
+#include <algorithm>
+#include <set>
+#include <queue>
+
+
 
 
 struct Position {
-    int x, y, time;
-    Position(int x = 0, int y = 0, int time = 0) : x(x), y(y), time(time) {}
-    bool operator==(const Position& other) const {
-        return x == other.x && y == other.y && time == other.time;
-    }
-    bool operator<(const Position& other) const {
-        return std::tie(time, x, y) < std::tie(other.time, other.x, other.y);
-    }
+    int x, y;
+    Position(int x = 0, int y = 0) : x(x), y(y) {}
+    bool operator==(const Position& other) const { return x == other.x && y == other.y; }
+    bool operator<(const Position& other) const { return x < other.x || (x == other.x && y < other.y); }
+};
 
+struct HeuristicNode {
+    Position pos;
+    int heuristic;
+    bool operator>(const HeuristicNode& other) const {
+        return heuristic > other.heuristic;
+    }
+};
+
+
+struct Node {
+    Position pos;
+    int heuristic;  // Heuristic cost to goal
+    bool operator>(const Node& other) const { return heuristic > other.heuristic; }
 };
 
 struct King {
     Position start;
     Position goal;
-    std::vector<Position> path; // Store the planned path for each king
-
-    King(Position s, Position g) : start(s), goal(g) {}
-};
-
-struct PathNode {
-    Position pos;
-    int cost;
-    int priority;  // This combines cost + heuristic for A* sorting
-
-    bool operator>(const PathNode& other) const {
-        return priority > other.priority;  // Min-heap based on priority
+    Position current;
+    Position previous;
+    std::vector<Position> path;
+    std::set<Position> closedList;
+    int waitCount = 0;
+    King(Position s, Position g) : start(s), goal(g) {
+        current = s;
     }
+    bool unblockedOnce = false;
+    int crossedLongWait = 0;
 };
-
-struct Node {
-    std::vector<std::vector<Position>> paths;  // paths for each king
-    std::unordered_map<int, std::set<Position>> constraints;  // conflicts resolved per king
-    int cost;
-    Node() : cost(0) {}
-
-    Node(const Node& other) : paths(other.paths), constraints(other.constraints), cost(other.cost) {}
-};
-
-struct CompareNode {
-    bool operator()(const Node& a, const Node& b) const {
-        return a.cost > b.cost; // This will make the priority queue a min-heap based on cost
-    }
-};
-
-
-
-struct Conflict {
-    int king1, king2, time;
-    Position pos;
-    Conflict(int k1 = -1, int k2 = -1, int time = -1, Position p = Position()) : king1(k1), king2(k2), time(time), pos(p) {}
-};
-
-
-
-
 
 static std::vector<std::vector<bool>> readBoard(const std::string& filename) {
     std::ifstream file(filename);
@@ -132,5 +114,3 @@ static std::vector<King> readKings(const std::string& filename) {
 
     return kings;
 }
-
-#endif
