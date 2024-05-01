@@ -3,8 +3,8 @@
 #define CHESSGAME_H
 
 #include <Utility.h>
-
-
+#include <unordered_set>
+#include <unordered_map>
 class ChessGame {
 
 public:
@@ -27,6 +27,11 @@ private:
     void computeDistanceMaps();
     std::vector<std::vector<int>> computeDijkstraMap(const Position& goal) ;
     std::vector<std::vector<std::vector<int>>> distanceMaps;
+    void unblock(int kingIndex);
+    void moveBlockingKing(int kingIndex, int blockingKingIndex);
+    int identifyBlockingKing(int kingIndex);
+    std::unordered_map<int,int> entangled;
+    bool withinBounds(const Position& pos);
 };
 
 #endif // CHESSGAME_H

@@ -47,8 +47,12 @@ bool ChessGame::findPaths() {
         int kingIndex = 0;
         for (auto& king : kings) {
             
-            if (king.current == king.goal) {
-                std::cout<<"king "<<kingIndex<<" reached goal! \n";
+            if (king.current == king.goal || king.cannotPlan) {
+                if(entangled.count(kingIndex)>0) {
+                    kings[entangled[kingIndex]].cannotPlan = false;
+                }
+                if(!king.cannotPlan)
+                    std::cout<<"king "<<kingIndex<<" reached goal! \n";
                 kingIndex++;
                 continue; 
             }// Skip if already at goal
@@ -65,18 +69,22 @@ bool ChessGame::findPaths() {
                 king.current = nextStep;    // Move king
                 king.path.push_back(nextStep);
                 updateAdjacentCells(nextStep, true);
-                king.waitCount = 0;         // Reset wait count on successful move
+                king.waitCount = 0; 
+                king.crossedLongWait = 0;        // Reset wait count on successful move
             } else {
                           // Increment wait count if the king has to wait
                 if (king.waitCount > 0) {   // If king has waited more than once, force a re-evaluation for possible move
                     nextStep = findReevaluationMove(king, kingIndex, true);
                     if (!(nextStep == king.current)) {
-                        king.closedList.insert(king.current);
+                        
                         // std::cout<<"king "<<kingIndex<<" moved from: "<<king.current.x<<", "<<king.current.y<<" : TO : "<<nextStep.x<<", "<<nextStep.y<<"\n";
                         king.current = nextStep;
                         king.path.push_back(nextStep);
                         updateAdjacentCells(nextStep, true);
                         king.waitCount = 0; // Reset wait count on successful move
+                        king.crossedLongWait = 0; 
+                        if(!(king.current==king.goal))
+                            king.closedList.insert(king.current);
                     } else {
                         king.waitCount++; 
                         // std::cout<<"king "<<kingIndex<<" waiting at "<<king.current.x<<", "<<king.current.y<<" for "<<king.waitCount<<" timesteps.\n";
@@ -101,9 +109,18 @@ bool ChessGame::findPaths() {
 }
 
 Position ChessGame::findReevaluationMove(const King& king, int kingIndex, bool isWaiting) {
+    if(kings[kingIndex].blocked) {
+        unblock(kingIndex);
+        kings[kingIndex].waitCount = 0;
+        kings[kingIndex].crossedLongWait = 0;
+        kings[kingIndex].blocked = false;
+    }
+    
     std::priority_queue<HeuristicNode, std::vector<HeuristicNode>, std::greater<HeuristicNode>> minHeap;
     std::vector<Position> neighbors = getNeighbors(king.current);  
     
+
+
     // Populate the priority queue with neighbors and their heuristic values
     for (const Position& next : neighbors) {  
         int nextHeuristic = heuristic(next, kingIndex);
@@ -118,8 +135,10 @@ Position ChessGame::findReevaluationMove(const King& king, int kingIndex, bool i
         if (isFree(top.pos) )  { 
             if(king.waitCount>5) {
                 kings[kingIndex].crossedLongWait++;
-                if(king.crossedLongWait>100) noSolution = true;
-                return top.pos;
+                if(king.crossedLongWait>100) {
+                    kings[kingIndex].blocked = true;
+                    return top.pos;
+                }
             }
                 
             else if (king.closedList.find(top.pos) == king.closedList.end())
@@ -130,8 +149,66 @@ Position ChessGame::findReevaluationMove(const King& king, int kingIndex, bool i
     return king.current;
 }
 
+int ChessGame::identifyBlockingKing(int kingIndex) {
+    // perform bfs around king and check if any other king's current position is in the bfs path
+    // return the first king's index that is blocking the path
+    std::queue<Position> queue;
+    std::vector<std::vector<bool>> visited(size, std::vector<bool>(size, false));
+    queue.push(kings[kingIndex].current);
+    visited[kings[kingIndex].current.x][kings[kingIndex].current.y] = true;
+    while (!queue.empty()) {
+        Position current = queue.front();
+        queue.pop();
+        std::vector<Position> neighbors = getNeighbors(current);
+        for (const auto& next : neighbors) {
+            if (withinBounds(next) && !visited[next.x][next.y]) {
+                    for (size_t i = 0; i < kings.size(); ++i) {
+                        if (i != kingIndex && kings[i].current == next && kings[i].current == kings[i].goal) {
+                            return i;
+                        }
+                    }
+                    queue.push(next);
+                    visited[next.x][next.y] = true;
+                }
+            }
+    }
+}
 
+void ChessGame::unblock(int kingIndex) {
+    int blockingKing = identifyBlockingKing(kingIndex);
+    moveBlockingKing(blockingKing, kingIndex);
+    return;
+}
 
+void ChessGame::moveBlockingKing(int blockingKingIndex, int blockedKing) {
+    // Move the blocking king one cell in the direction opposite to blocked King's goal.
+    // get blocking king's neighbors and arrange them in opposite order of blockedKing's dikstra map. 
+    // move the blocking king to the first available cell in the opposite order of blockedKing's dikstra map.
+    std::priority_queue<HeuristicNode, std::vector<HeuristicNode>, std::greater<HeuristicNode>> minHeap;
+    std::vector<Position> neighbors = getNeighbors(kings[blockingKingIndex].current);
+    std::vector<Position> orderedNeighbors;
+    for (const Position& next : neighbors) {
+        int nextHeuristic = heuristic(next, blockedKing);
+        minHeap.push({next, nextHeuristic});
+    }
+    updateAdjacentCells(kings[blockingKingIndex].current, false);
+    while (!minHeap.empty()) {
+        HeuristicNode top = minHeap.top();
+        minHeap.pop();
+        if (isFree(top.pos)) {
+            // kings[blockingKingIndex].closedList.insert(kings[blockingKingIndex].current);
+            std::cout<<"Blocked king: "<<blockedKing<<"\n";
+            std::cout<<"Blocking king: "<<blockingKingIndex<<" moving from: "<<kings[blockingKingIndex].current.x<<", "<<kings[blockingKingIndex].current.y<<" : TO : "<<top.pos.x<<", "<<top.pos.y<<"\n";
+            kings[blockingKingIndex].current = top.pos;
+            kings[blockingKingIndex].path.push_back(top.pos);
+            updateAdjacentCells(top.pos, true);
+            kings[blockingKingIndex].cannotPlan = true;
+            entangled[blockedKing] = blockingKingIndex;
+            
+            return;
+        }
+    }
+}
 
 void ChessGame::updateAdjacentCells(Position pos, bool increment) {
     // Directions for the eight surrounding cells in an 8-connected grid
@@ -152,6 +229,9 @@ void ChessGame::updateAdjacentCells(Position pos, bool increment) {
     }
 }
 
+bool ChessGame::withinBounds(const Position& pos) {
+    return pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size;
+}
 
 bool ChessGame::isFree(const Position& pos) const {
     // Check if the position is within grid boundaries

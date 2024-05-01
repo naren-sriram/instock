@@ -46,6 +46,8 @@ struct King {
     }
     bool unblockedOnce = false;
     int crossedLongWait = 0;
+    bool blocked = false;
+    bool cannotPlan = false;
 };
 
 static std::vector<std::vector<bool>> readBoard(const std::string& filename) {
