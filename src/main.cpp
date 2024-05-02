@@ -17,9 +17,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string mapFile = cmdArgs.count("input_map") ? cmdArgs["input_map"] : "problem-tests/3/map.txt";  // Get the map file path
-    std::string kingsFile = cmdArgs.count("input_kings") ? cmdArgs["input_kings"] : "problem-tests/3/kings.txt";  // Get the kings file path
-    std::string solutionPath = cmdArgs.count("solution") ? cmdArgs["solution"] : "solution_3.txt";  // Get the solution file path or default
+    std::string mapFile = cmdArgs.count("input_map") ? cmdArgs["input_map"] : "problem-tests/8/map.txt";  // Get the map file path
+    std::string kingsFile = cmdArgs.count("input_kings") ? cmdArgs["input_kings"] : "problem-tests/8/kings.txt";  // Get the kings file path
+    std::string solutionPath = cmdArgs.count("solution") ? cmdArgs["solution"] : "solution_8.txt";  // Get the solution file path or default
 
     if (mapFile.empty() || kingsFile.empty()) {
         std::cerr << "Usage: " << argv[0] << " input_map <map_file> input_kings <kings_file> solution <output_file>s" << std::endl;

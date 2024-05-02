@@ -63,8 +63,8 @@ std::unordered_map<Position, int, PositionHasher> ChessGame::calculateDijkstraMa
 
 
 bool ChessGame::findPathsCBS() {
-    std::priority_queue<Node, std::vector<Node>, NodeComparator> open_list;
-    // std::queue<Node> open_list;
+    // std::priority_queue<Node, std::vector<Node>, NodeComparator> open_list;
+    std::queue<Node> open_list;
     
     Node root(kings.size());
     for(int i=0;i<kings.size();i++) {
@@ -86,7 +86,8 @@ bool ChessGame::findPathsCBS() {
     int iter = 0;
     while (!open_list.empty()) {
         std::cout<<"iter number: "<<iter<<"\n";
-        Node curr = open_list.top();
+        Node curr = open_list.front();
+        
         if(curr.cost==7) {
             // std::cout<<"cost is 7\n";
         }
@@ -121,7 +122,7 @@ bool ChessGame::findPathsCBS() {
             }
             child1.paths[king1].clear();
             child1.paths[king1] = appendedPath1;
-            child1.cost = calculateCost(child1.paths);
+            
             // if(!findConflicts(child1, kings, conflict1, conflict2)) {
             //     for(int i=0;i<kings.size();i++) {
             //         kings[i].path = curr.paths[i];
@@ -129,6 +130,7 @@ bool ChessGame::findPathsCBS() {
             //     return true;
             // }
         }
+        child1.cost = calculateCost(child1.paths);
 
         //calculate new path for child 2
         std::vector<Position> existingPath2 = child2.paths[king2];
@@ -143,7 +145,7 @@ bool ChessGame::findPathsCBS() {
             }
             child2.paths[king2].clear();
             child2.paths[king2] = appendedPath2;
-            child2.cost = calculateCost(child2.paths);
+            
             // if(!findConflicts(child2, kings, conflict1, conflict2)) {
             //     for(int i=0;i<kings.size();i++) {
             //         kings[i].path = curr.paths[i];
@@ -152,14 +154,70 @@ bool ChessGame::findPathsCBS() {
             // }
         }
 
+        child2.cost = calculateCost(child2.paths);
+        int numConflictsCurr = calculateNumberOfConflicts(curr.paths);
+        int numConflictsChild1 = calculateNumberOfConflicts(child1.paths);
+        int numConflictsChild2 = calculateNumberOfConflicts(child2.paths);
+        std::vector<Node> children = {curr, child1, child2};
 
+
+        
+        
+        // bypass conflicts
+
+        if(numConflictsChild1<numConflictsCurr ) {
+            open_list = std::queue<Node>();
+            open_list.push(child1);
+            iter++;
+            continue;
+        }
+        //
+        if(numConflictsChild2<numConflictsCurr ) {
+            open_list = std::queue<Node>();
+            open_list.push(child2);
+            iter++;
+            continue;
+        }
+
+        // if(numConflictsChild1<numConflictsChild2 ) {
+        //     open_list.push(child1);
+        //     iter++;
+        //     continue;
+        // }
+
+        // if(numConflictsChild2<numConflictsChild1 ) {
+        //     open_list.push(child2);
+        //     iter++;
+        //     continue;
+        // }
+
+        // if(numConflictsChild1<numConflictsChild2) {
+        //     open_list.push(child1);
+        //     open_list.push(child2);
+        // }
+        // else if (numConflictsChild2<numConflictsChild1) {
+        //     open_list.push(child2);
+        //     open_list.push(child1);
+        // }
+        // else {
+        //     if(child1.cost<=child2.cost) {
+        //         open_list.push(child1);
+        //         open_list.push(child2);
+        //     }
+        //     else {
+        //         open_list.push(child2);
+        //         open_list.push(child1);
+        //     }
+        // }
          if (!child1.paths[king1].empty()) {
             open_list.push(child1);
         }
         if (!child2.paths[king2].empty()) {
             open_list.push(child2);
         }
+        // iter++;
         iter++;
+        
     }
 
     noSolution = true;
@@ -167,21 +225,25 @@ bool ChessGame::findPathsCBS() {
 }
 
 
-int ChessGame::calculateCost(const std::vector<std::vector<Position>>& paths) {
-    int total_cost = 0;
-    for (const auto& path : paths) {
-        total_cost += path.size();
-    }
-    return total_cost;
-}
-
-bool ChessGame::findConflicts(const Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2) {
+int ChessGame::calculateNumberOfConflicts( const std::vector<std::vector<Position>>& paths) {
+    std::vector<std::vector<Position>> copyPaths = paths;
+    int numberOfConflicts = 0;
     for (int k1 = 0; k1 < kings.size(); ++k1) {
         for (int k2 = 0; k2 < kings.size(); ++k2) {
             if(k1==k2) continue;
-            for (int t = 0; t < node.paths[k1].size() && t < node.paths[k2].size(); ++t) {
+            // int max_length = std::max(copyPaths[k1].size(), copyPaths[k2].size());
+
+            // // Pad shorter path with the last position to match the max length
+            // while (copyPaths[k1].size() < max_length) {
+            //     copyPaths[k1].push_back(copyPaths[k1].back());
+            // }
+
+            // while (copyPaths[k2].size() < max_length) {
+            //     copyPaths[k2].push_back(copyPaths[k2].back());
+            // }
+            for (int t = 0; t < paths[k1].size() && t<paths[k2].size(); ++t) {
                 
-                const auto& p1 = node.paths[k1][t];
+                const auto& p1 = copyPaths[k1][t];
                 int t2 = 0;
                 if(k2>k1) {
                     t2 = t-1;
@@ -192,11 +254,78 @@ bool ChessGame::findConflicts(const Node& node, const std::vector<King>& kings, 
                     
                     t2 = 0;
                 }
-                p2 = node.paths[k2][t2];
+                p2 = paths[k2][t2];
 
                 // Detect vertex conflict
                 if (p1 == p2) {
-                    conflict1 = std::make_tuple(k1, t, p1.x, p1.y);
+
+                    numberOfConflicts++;
+                }
+
+                // Detect adjacency conflict
+                std::vector<Position> adjacents = {
+                    {p1.x + 1, p1.y}, {p1.x - 1, p1.y}, {p1.x, p1.y + 1}, {p1.x, p1.y - 1},
+                    {p1.x + 1, p1.y + 1}, {p1.x - 1, p1.y - 1}, {p1.x + 1, p1.y - 1}, {p1.x - 1, p1.y + 1}
+                };
+                if (std::find(adjacents.begin(), adjacents.end(), p2) != adjacents.end()) {
+                    
+                    numberOfConflicts++;
+                }
+            }
+        }
+    }
+    return numberOfConflicts;
+}
+
+int ChessGame::calculateCost(const std::vector<std::vector<Position>>& paths) {
+    int cost = 0;
+    for (int i = 0; i < paths.size(); ++i) {
+        cost += paths[i].size();
+    }
+    return cost;
+}
+
+bool ChessGame::findConflicts(const Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2) {
+    for (int k1 = 0; k1 < kings.size(); ++k1) {
+        for (int k2 = 0; k2 < kings.size(); ++k2) {
+            if(k1==k2) continue;
+            const auto& path1 = node.paths[k1];
+            const auto& path2 = node.paths[k2];
+            int max_length = std::max(path1.size(), path2.size());
+
+            for (int t = 0; t < max_length; ++t) {
+                Position p1, p2;
+                int t1 = t, t2 = t;
+
+
+                
+                if(k2>k1) {
+                    t2 = t-1;
+                }
+                else t2 = t;
+                
+                if(t2==-1) {
+                    
+                    t2 = 0;
+                }
+                
+
+                // If one path is shorter, keep checking the final positions for conflicts
+                if (t1 >= path1.size()) {
+                    p1 = path1.back(); // Last position of king1
+                } else {
+                    p1 = path1[t1];
+                }
+
+                if (t2 >= path2.size()) {
+                    p2 = path2.back(); // Last position of king2
+                } else {
+                    p2 = path2[t2];
+                }
+
+                // Detect vertex conflict
+                if (p1 == p2) {
+                    conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
                     conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
                     return true;
                 }
@@ -207,7 +336,7 @@ bool ChessGame::findConflicts(const Node& node, const std::vector<King>& kings, 
                     {p1.x + 1, p1.y + 1}, {p1.x - 1, p1.y - 1}, {p1.x + 1, p1.y - 1}, {p1.x - 1, p1.y + 1}
                 };
                 if (std::find(adjacents.begin(), adjacents.end(), p2) != adjacents.end()) {
-                    conflict1 = std::make_tuple(k1, t, p1.x, p1.y);
+                    conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
                     conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
                     return true;
                 }
@@ -216,6 +345,8 @@ bool ChessGame::findConflicts(const Node& node, const std::vector<King>& kings, 
     }
     return false; // No conflicts found
 }
+
+
 
 
 std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, Node curr) {
@@ -229,15 +360,7 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
     std::tuple<Position, int> start_key = {start, startTime};
     open_list.push({0, startTime, start});
     cost_map[{start, startTime}] = 0;
-    // for(int i=0;i<=startTime;i++) {
-    //     closed_list.insert(curr.paths[kingIndex][i]);
-    // }
-    // iterate through king's current path. 
-    // if 2 next positions are same, increase wait count by 1
-    // kings[kingIndex].waitCount = 0;
-    // for (int i = 0; i < curr.paths[kingIndex].size()-1; ++i) {
-    //     closed_list.insert(curr.paths[kingIndex][i]);
-    // }
+
     while (!open_list.empty()) {
         auto [cost, timeStep, current] = open_list.top();
         open_list.pop();
@@ -260,86 +383,12 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
                 {current.x + 1, current.y + 1}, {current.x - 1, current.y - 1},
                 {current.x + 1, current.y - 1}, {current.x - 1, current.y + 1}
             };
-        // if(kings[kingIndex].waitCount>=1) {
-        //     neighbors.resize(8);
-        //     neighbors = {
-        //         {current.x + 1, current.y}, {current.x - 1, current.y},
-        //         {current.x, current.y + 1}, {current.x, current.y - 1},
-        //         {current.x + 1, current.y + 1}, {current.x - 1, current.y - 1},
-        //         {current.x + 1, current.y - 1}, {current.x - 1, current.y + 1}
-        //     };
-        // }
-        // else {
-        //    neighbors = {
-        //         current,
-        //         {current.x + 1, current.y}, {current.x - 1, current.y},
-        //         {current.x, current.y + 1}, {current.x, current.y - 1},
-        //         {current.x + 1, current.y + 1}, {current.x - 1, current.y - 1},
-        //         {current.x + 1, current.y - 1}, {current.x - 1, current.y + 1}
-        //     };
-        // }
-
-        // for all neighbors, 
-        // if all of them are either blocked, or in closed list or adjacent to otehr kings
-        // then push current position with cost+1 to open list, timeStep++ and continue
-        // else proceed below
-
-
-        // bool all_neighbors_blocked = true;
-        // for (auto& next : neighbors) {
-        //     if (next.x < 0 || next.y < 0 || next.x >= size || next.y >= size) continue;
-        //     if (grid[next.x][next.y] < 0) continue; // Skip blocked cells
-
-        //     // Check if it's adjacent to other kings
-        //     bool adjacent_to_other_king = false;
-        //     for (int k = 0; k < kings.size(); ++k) {
-                
-        //         int t2 = 0;
-        //         if(k>kingIndex) {
-        //             t2 = timeStep-1;
-        //         }
-        //         else t2 = timeStep;
-        //         Position p2 = Position(0,0);
-        //         if(t2==-1) {                   
-        //             t2 = 0;
-        //         }
-        //         if(t2==0 && curr.paths[k].size()==0) {
-        //             all_neighbors_blocked = false;
-        //             break;
-        //         }
-        //         if(curr.paths[k].size()>=t2) {
-        //             p2 = curr.paths[k][t2];
-        //         }
-        //         else { 
-        //             all_neighbors_blocked = false;
-        //             break;
-        //         }
-        //         if (k != kingIndex && std::abs(p2.x - next.x) <= 1 && std::abs(p2.y - next.y) <= 1) {
-        //             adjacent_to_other_king = true;
-        //             break;
-        //         }
-        //     }
-
-        //     // If the position isn't in the closed list, isn't adjacent to other kings, or isn't blocked, we can move there
-        //     if (closed_list.find(next) == closed_list.end() && !adjacent_to_other_king) {
-        //         all_neighbors_blocked = false;
-        //         break;
-        //     }
-        // }
-
-        // if (all_neighbors_blocked) {
-        //     if(curr.paths[kingIndex].size()>1) {
-        //         int t = timeStep+1;
-        //         open_list.push({cost + 1, t, current});
-                
-        //         continue;
-        //     }
-        // }
+       
 
         for (auto& next : neighbors) {
             if (next.x < 0 || next.y < 0 || next.x >= size || next.y >= size) continue;
             if (grid[next.x][next.y] < 0) continue; // Skip blocked cells
-            if (closed_list.find(next) != closed_list.end() && !(next==current)) {
+            if (closed_list.find(next) != closed_list.end() ) {
                 continue;
             }
             
@@ -353,7 +402,7 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
             if (conflict) continue;
 
 
-            int heuristic_cost = 100*kings[kingIndex].distance_map[next];
+            int heuristic_cost = kings[kingIndex].distance_map[next];
             // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
             int new_cost = cost + 1 + heuristic_cost;
             

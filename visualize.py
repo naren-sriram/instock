@@ -60,7 +60,7 @@ def visualize(board, trajectories, size):
 
     img = ax.imshow(background, interpolation='none', extent=[-0.5, size-0.5, size-0.5, -0.5])
 
-    scatter_plots = [ax.plot([], [], 'o', color=colors(i), markersize=20)[0] for i in range(len(trajectories))]
+    scatter_plots = [ax.plot([], [], 'o', color=colors(i), markersize=15)[0] for i in range(len(trajectories))]
 
     def init():
         for scatter_plot in scatter_plots:
@@ -88,14 +88,14 @@ def visualize(board, trajectories, size):
         return scatter_plots
 
     ani = animation.FuncAnimation(fig, update, frames=(num_kings * max(len(traj) for traj in trajectories) + 1), init_func=init, blit=True, interval=500, repeat_delay=1000)
-    ani.save('solution_10.gif', writer='imagemagick', fps=2)
+    # ani.save('solution_10.gif', writer='imagemagick', fps=2)
     plt.show()
 
 if __name__ == "__main__":
     args = parse_args(sys.argv)
-    map_file = args.get('input_map', "/home/naren/instock/problem-tests/test/map.txt")
-    kings_file = args.get('input_kings', "/home/naren/instock/problem-tests/test/kings.txt")
-    solution_file = args.get('solution', "solution_test.txt")
+    map_file = args.get('input_map', "/home/naren/instock/problem-tests/8/map.txt")
+    kings_file = args.get('input_kings', "/home/naren/instock/problem-tests/8/kings.txt")
+    solution_file = args.get('solution', "solution_8.txt")
 
     board, size = read_map(map_file)
     num_kings = read_kings(kings_file)
