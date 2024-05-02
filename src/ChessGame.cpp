@@ -63,8 +63,8 @@ std::unordered_map<Position, int, PositionHasher> ChessGame::calculateDijkstraMa
 
 
 bool ChessGame::findPathsCBS() {
-    // std::priority_queue<Node, std::vector<Node>, NodeComparator> open_list;
-    std::queue<Node> open_list;
+    std::priority_queue<Node, std::vector<Node>, NodeComparator> open_list;
+    // std::queue<Node> open_list;
     
     Node root(kings.size());
     for(int i=0;i<kings.size();i++) {
@@ -86,9 +86,9 @@ bool ChessGame::findPathsCBS() {
     int iter = 0;
     while (!open_list.empty()) {
         std::cout<<"iter number: "<<iter<<"\n";
-        Node curr = open_list.front();
+        Node curr = open_list.top();
         if(curr.cost==7) {
-            std::cout<<"cost is 7\n";
+            // std::cout<<"cost is 7\n";
         }
         open_list.pop();
         std::tuple<int, int, int, int> conflict1;
@@ -226,10 +226,18 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
     std::unordered_set<Position, PositionHasher> closed_list;
     Position start = Position(0,0);
     start = curr.paths[kingIndex][startTime];
-    
+    std::tuple<Position, int> start_key = {start, startTime};
     open_list.push({0, startTime, start});
     cost_map[{start, startTime}] = 0;
-
+    // for(int i=0;i<=startTime;i++) {
+    //     closed_list.insert(curr.paths[kingIndex][i]);
+    // }
+    // iterate through king's current path. 
+    // if 2 next positions are same, increase wait count by 1
+    // kings[kingIndex].waitCount = 0;
+    // for (int i = 0; i < curr.paths[kingIndex].size()-1; ++i) {
+    //     closed_list.insert(curr.paths[kingIndex][i]);
+    // }
     while (!open_list.empty()) {
         auto [cost, timeStep, current] = open_list.top();
         open_list.pop();
@@ -237,7 +245,7 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
         if (current == kings[kingIndex].target) {
             std::vector<Position> path;
             std::tuple<Position, int> current_key = {current, timeStep};
-            while (!(current == start)) {
+            while (!(current_key == start_key)) {
                 path.push_back(current);
                 current_key = came_from[current_key];
                 current = std::get<0>(current_key);
@@ -245,14 +253,31 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
             std::reverse(path.begin(), path.end());
             return path;
         }
-
         std::vector<Position> neighbors = {
-            
-            {current.x + 1, current.y}, {current.x - 1, current.y},
-            {current.x, current.y + 1}, {current.x, current.y - 1},
-            {current.x + 1, current.y + 1}, {current.x - 1, current.y - 1},
-            {current.x + 1, current.y - 1}, {current.x - 1, current.y + 1}
-        };
+                current,
+                {current.x + 1, current.y}, {current.x - 1, current.y},
+                {current.x, current.y + 1}, {current.x, current.y - 1},
+                {current.x + 1, current.y + 1}, {current.x - 1, current.y - 1},
+                {current.x + 1, current.y - 1}, {current.x - 1, current.y + 1}
+            };
+        // if(kings[kingIndex].waitCount>=1) {
+        //     neighbors.resize(8);
+        //     neighbors = {
+        //         {current.x + 1, current.y}, {current.x - 1, current.y},
+        //         {current.x, current.y + 1}, {current.x, current.y - 1},
+        //         {current.x + 1, current.y + 1}, {current.x - 1, current.y - 1},
+        //         {current.x + 1, current.y - 1}, {current.x - 1, current.y + 1}
+        //     };
+        // }
+        // else {
+        //    neighbors = {
+        //         current,
+        //         {current.x + 1, current.y}, {current.x - 1, current.y},
+        //         {current.x, current.y + 1}, {current.x, current.y - 1},
+        //         {current.x + 1, current.y + 1}, {current.x - 1, current.y - 1},
+        //         {current.x + 1, current.y - 1}, {current.x - 1, current.y + 1}
+        //     };
+        // }
 
         // for all neighbors, 
         // if all of them are either blocked, or in closed list or adjacent to otehr kings
@@ -314,7 +339,9 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
         for (auto& next : neighbors) {
             if (next.x < 0 || next.y < 0 || next.x >= size || next.y >= size) continue;
             if (grid[next.x][next.y] < 0) continue; // Skip blocked cells
-            if (closed_list.find(next) != closed_list.end() && !(next==current)) continue;
+            if (closed_list.find(next) != closed_list.end() && !(next==current)) {
+                continue;
+            }
             
 
             bool conflict = false;
@@ -326,7 +353,8 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
             if (conflict) continue;
 
 
-            int heuristic_cost = kings[kingIndex].distance_map[next];
+            int heuristic_cost = 100*kings[kingIndex].distance_map[next];
+            // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
             int new_cost = cost + 1 + heuristic_cost;
             
             std::tuple<Position, int> next_key = {next, timeStep + 1};
@@ -339,6 +367,10 @@ std::vector<Position> ChessGame::lowLevelSearch(int kingIndex, int startTime, No
         }
     }
     return {}; // No valid path found
+}
+
+int ChessGame::manhattanDistance(const Position& a, const Position& b) {
+    return std::abs(a.x - b.x) + std::abs(a.y - b.y);
 }
 
 

@@ -36,6 +36,7 @@ struct King {
     Position current, target, start;
     std::vector<Position> path;
     std::unordered_map<Position, int, PositionHasher> distance_map;
+    int waitCount = 0;
     King(Position start, Position end) : start(start), current(start), target(end) {}
 };
 
@@ -79,7 +80,7 @@ struct CompareNode {
 
 struct NodeComparator {
     bool operator()(const Node& a, const Node& b) {
-        return a.cost > b.cost;
+        return a.cost < b.cost;
     }
 };
 

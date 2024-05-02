@@ -39,6 +39,7 @@ private:
     bool findConflicts(const Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2);
     std::unordered_map<Position, int, PositionHasher> calculateDijkstraMap(const Position& goal, const std::vector<std::vector<int>>& grid);
     int calculateCost(const std::vector<std::vector<Position>>& paths);
+    int manhattanDistance(const Position& a, const Position& b);
 };
 
 #endif // CHESSGAME_H
