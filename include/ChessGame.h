@@ -5,12 +5,14 @@
 #include <Utility.h>
 #include <unordered_set>
 #include <unordered_map>
+#include <optional>
+#include <algorithm>
+#include <queue>
 class ChessGame {
 
 public:
-    ChessGame(int n, const std::vector<std::vector<bool>>& initialGrid);
-    void placeKings( std::vector<King>& allKings);
-    bool findPaths();
+    ChessGame(int n, const std::vector<std::vector<bool>>& initialGrid, std::vector<King>& allKings);
+    bool findPathsCBS();
     void writePathsToFile(const std::string& filename);
 
 private:
@@ -32,6 +34,11 @@ private:
     int identifyBlockingKing(int kingIndex);
     std::unordered_map<int,int> entangled;
     bool withinBounds(const Position& pos);
+    
+    std::vector<Position> lowLevelSearch(int kingIndex, int startTime, Node curr);
+    bool findConflicts(const Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2);
+    std::unordered_map<Position, int, PositionHasher> calculateDijkstraMap(const Position& goal, const std::vector<std::vector<int>>& grid);
+    int calculateCost(const std::vector<std::vector<Position>>& paths);
 };
 
 #endif // CHESSGAME_H

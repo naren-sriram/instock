@@ -1,54 +1,99 @@
+#ifndef UTILITY_H
+#define UTILITY_H
 #include <vector>
-#include <queue>
 #include <map>
-#include <algorithm>
+#include <set>
+#include <iostream>
 #include <fstream>
 #include <sstream>
-#include <algorithm>
-#include <set>
+#include <unordered_map>
 #include <queue>
-
-
-
-
+#include<unordered_set>
 struct Position {
     int x, y;
     Position(int x = 0, int y = 0) : x(x), y(y) {}
-    bool operator==(const Position& other) const { return x == other.x && y == other.y; }
-    bool operator<(const Position& other) const { return x < other.x || (x == other.x && y < other.y); }
-};
 
-struct HeuristicNode {
-    Position pos;
-    int heuristic;
-    bool operator>(const HeuristicNode& other) const {
-        return heuristic > other.heuristic;
+    // Equality operator
+    bool operator==(const Position& other) const {
+        return x == other.x && y == other.y;
+    }
+
+    // Less-than operator to use Position as a key in ordered containers
+    bool operator<(const Position& other) const {
+        return std::tie(x, y) < std::tie(other.x, other.y);
     }
 };
 
-
-struct Node {
-    Position pos;
-    int heuristic;  // Heuristic cost to goal
-    bool operator>(const Node& other) const { return heuristic > other.heuristic; }
+// Hash function for Position to use in unordered containers
+struct PositionHasher {
+    std::size_t operator()(const Position& pos) const {
+        // XOR-based combination of hash values of x and y
+        return std::hash<int>()(pos.x) ^ std::hash<int>()(pos.y) ;
+    }
 };
 
 struct King {
-    Position start;
-    Position goal;
-    Position current;
-    Position previous;
+    Position current, target, start;
     std::vector<Position> path;
-    std::set<Position> closedList;
-    int waitCount = 0;
-    King(Position s, Position g) : start(s), goal(g) {
-        current = s;
-    }
-    bool unblockedOnce = false;
-    int crossedLongWait = 0;
-    bool blocked = false;
-    bool cannotPlan = false;
+    std::unordered_map<Position, int, PositionHasher> distance_map;
+    King(Position start, Position end) : start(start), current(start), target(end) {}
 };
+
+struct Constraint {
+    int time;
+    int x, y;
+    bool operator==(const Constraint& other) const {
+        return time == other.time && x == other.x && y == other.y;
+    }
+};
+
+// Custom hash function for Constraint
+struct ConstraintHasher {
+    std::size_t operator()(const Constraint& c) const {
+        return std::hash<int>()(c.time) ^ std::hash<int>()(c.x) ^ std::hash<int>()(c.y);
+    }
+};
+
+
+struct PositionTimeHasher {
+    std::size_t operator()(const std::tuple<Position, int>& p) const {
+        std::size_t pos_hash = PositionHasher{}(std::get<0>(p));
+        std::size_t time_hash = std::hash<int>{}(std::get<1>(p));
+        return pos_hash ^ (time_hash << 1); // Combine the hashes
+    }
+};
+
+struct Node {
+    std::vector<std::vector<Position>> paths;
+    std::unordered_map<int, std::unordered_set<Constraint, ConstraintHasher>> constraints; // Set of constraints per king
+    int cost;
+
+    Node(int k) : paths(k), cost(0) {}
+};
+
+struct CompareNode {
+    bool operator()(const Node& a, const Node& b) const {
+        return a.cost > b.cost; // This will make the priority queue a min-heap based on cost
+    }
+};
+
+struct NodeComparator {
+    bool operator()(const Node& a, const Node& b) {
+        return a.cost > b.cost;
+    }
+};
+
+struct Conflict {
+    int king1, king2, time;
+    Position pos;
+    Conflict(int k1 = -1, int k2 = -1, int time = -1, Position p = Position()) : king1(k1), king2(k2), time(time), pos(p) {}
+};
+
+
+
+
+
+
 
 static std::vector<std::vector<bool>> readBoard(const std::string& filename) {
     std::ifstream file(filename);
@@ -77,6 +122,9 @@ static std::vector<std::vector<bool>> readBoard(const std::string& filename) {
 
     return board;
 }
+
+
+
 
 
 static std::vector<King> readKings(const std::string& filename) {
@@ -116,3 +164,5 @@ static std::vector<King> readKings(const std::string& filename) {
 
     return kings;
 }
+
+#endif

@@ -4,7 +4,7 @@
 #include <chrono>
 #include <map>
 #include <string>
-#include "ChessGame.h"  // Include the GameSimulator class
+#include <ChessGame.h>  // Include the GameSimulator class
 
 int main(int argc, char* argv[]) {
     std::map<std::string, std::string> cmdArgs;
@@ -17,9 +17,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string mapFile = cmdArgs.count("input_map") ? cmdArgs["input_map"] : "problem-tests/3/map.txt";  // Get the map file path
-    std::string kingsFile = cmdArgs.count("input_kings") ? cmdArgs["input_kings"] : "problem-tests/3/kings.txt";  // Get the kings file path
-    std::string solutionPath = cmdArgs.count("solution") ? cmdArgs["solution"] : "solution.txt";  // Get the solution file path or default
+    std::string mapFile = cmdArgs.count("input_map") ? cmdArgs["input_map"] : "problem-tests/test/map.txt";  // Get the map file path
+    std::string kingsFile = cmdArgs.count("input_kings") ? cmdArgs["input_kings"] : "problem-tests/test/kings.txt";  // Get the kings file path
+    std::string solutionPath = cmdArgs.count("solution") ? cmdArgs["solution"] : "solution_test.txt";  // Get the solution file path or default
 
     if (mapFile.empty() || kingsFile.empty()) {
         std::cerr << "Usage: " << argv[0] << " input_map <map_file> input_kings <kings_file> solution <output_file>s" << std::endl;
@@ -28,11 +28,11 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::vector<bool>> board = readBoard(mapFile);
     std::vector<King> kings = readKings(kingsFile);
-    ChessGame chessGame(board.size(), board);
-    chessGame.placeKings(kings);
+    ChessGame chessGame(board.size(), board, kings);
+    // chessGame.placeKings(kings);
 
     auto start = std::chrono::high_resolution_clock::now();
-    bool found = chessGame.findPaths();
+    bool found = chessGame.findPathsCBS();
     auto stop = std::chrono::high_resolution_clock::now();
 
     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
