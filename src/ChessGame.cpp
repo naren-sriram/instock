@@ -231,30 +231,39 @@ int ChessGame::calculateNumberOfConflicts( const std::vector<std::vector<Positio
     for (int k1 = 0; k1 < kings.size(); ++k1) {
         for (int k2 = 0; k2 < kings.size(); ++k2) {
             if(k1==k2) continue;
-            // int max_length = std::max(copyPaths[k1].size(), copyPaths[k2].size());
-
-            // // Pad shorter path with the last position to match the max length
-            // while (copyPaths[k1].size() < max_length) {
-            //     copyPaths[k1].push_back(copyPaths[k1].back());
-            // }
-
-            // while (copyPaths[k2].size() < max_length) {
-            //     copyPaths[k2].push_back(copyPaths[k2].back());
-            // }
-            for (int t = 0; t < paths[k1].size() && t<paths[k2].size(); ++t) {
+            const auto& path1 = paths[k1];
+            const auto& path2 = paths[k2];
+            int max_length = std::max(path1.size(), path2.size());
+            for (int t = 0; t < max_length; ++t) {
                 
-                const auto& p1 = copyPaths[k1][t];
-                int t2 = 0;
+                Position p1, p2;
+                int t1 = t, t2 = t;
+
+
+                
                 if(k2>k1) {
                     t2 = t-1;
                 }
                 else t2 = t;
-                Position p2 = Position(0,0);
+                
                 if(t2==-1) {
                     
                     t2 = 0;
                 }
-                p2 = paths[k2][t2];
+                
+
+                // If one path is shorter, keep checking the final positions for conflicts
+                if (t1 >= path1.size()) {
+                    p1 = path1.back(); // Last position of king1
+                } else {
+                    p1 = path1[t1];
+                }
+
+                if (t2 >= path2.size()) {
+                    p2 = path2.back(); // Last position of king2
+                } else {
+                    p2 = path2[t2];
+                }
 
                 // Detect vertex conflict
                 if (p1 == p2) {
