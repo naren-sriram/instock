@@ -226,16 +226,6 @@ bool ChessGame::findPathsCBS() {
         
         
         // bypass conflicts
-       
-        if(validChild1) {
-            if(numConflictsChild1<numConflictsCurr && child1.cost<=curr.cost) {
-                open_list = std::queue<Node>();
-                open_list.push(child1);
-                iter++;
-                continue;
-            }
-        }
-
 
         bool validChild2 = true;
 
@@ -245,9 +235,21 @@ bool ChessGame::findPathsCBS() {
             validChild2 = false;
         }
 
+        if(validChild1) {
+            if(numConflictsChild1<numConflictsCurr && child1.cost<=curr.cost ) {
+                // open_list = std::queue<Node>();
+                open_list.push(child1);
+                iter++;
+                continue;
+            }
+        }
+
+
+        
+
         if(validChild2) {
             if(numConflictsChild2<numConflictsCurr && child2.cost<=curr.cost) {
-                open_list = std::queue<Node>();
+                // open_list = std::queue<Node>();
                 open_list.push(child2);
                 iter++;
                 continue;
