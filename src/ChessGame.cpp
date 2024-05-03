@@ -289,9 +289,19 @@ int ChessGame::calculateNumberOfConflicts( const std::vector<std::vector<Positio
     for (int k1 = 0; k1 < kings.size(); ++k1) {
         for (int k2 = 0; k2 < kings.size(); ++k2) {
             if(k1==k2) continue;
-            const auto& path1 = paths[k1];
-            const auto& path2 = paths[k2];
+            std::vector<Position> path1 = paths[k1];
+            std::vector<Position> path2 = paths[k2];
+
+            // Find the maximum path length
             int max_length = std::max(path1.size(), path2.size());
+
+            // Pad the shorter path with its last position
+            while (path1.size() < max_length) {
+                path1.push_back(path1.back());
+            }
+            while (path2.size() < max_length) {
+                path2.push_back(path2.back());
+            }
             for (int t = 0; t < max_length; ++t) {
                 
                 Position p1, p2;
@@ -308,20 +318,21 @@ int ChessGame::calculateNumberOfConflicts( const std::vector<std::vector<Positio
                     
                     t2 = 0;
                 }
-                
+                p1 = path1[t1];
+                p2 = path2[t2];
 
                 // If one path is shorter, keep checking the final positions for conflicts
-                if (t1 >= path1.size()) {
-                    p1 = path1.back(); // Last position of king1
-                } else {
-                    p1 = path1[t1];
-                }
+                // if (t1 >= path1.size()) {
+                //     p1 = path1.back(); // Last position of king1
+                // } else {
+                //     p1 = path1[t1];
+                // }
 
-                if (t2 >= path2.size()) {
-                    p2 = path2.back(); // Last position of king2
-                } else {
-                    p2 = path2[t2];
-                }
+                // if (t2 >= path2.size()) {
+                //     p2 = path2.back(); // Last position of king2
+                // } else {
+                //     p2 = path2[t2];
+                // }
 
                 // Detect vertex conflict
                 if (p1 == p2) {
@@ -352,13 +363,19 @@ int ChessGame::calculateCost(const std::vector<std::vector<Position>>& paths) {
     return cost;
 }
 
-bool ChessGame::findConflicts(const Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2) {
+bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2) {
     for (int k1 = 0; k1 < kings.size(); ++k1) {
         for (int k2 = 0; k2 < kings.size(); ++k2) {
             if(k1==k2) continue;
-            const auto& path1 = node.paths[k1];
-            const auto& path2 = node.paths[k2];
-            int max_length = std::max(path1.size(), path2.size());
+             int max_length = std::max(node.paths[k1].size(), node.paths[k2].size());
+
+            // Pad the shorter path with its last position
+            while (node.paths[k1].size() < max_length) {
+                node.paths[k1].push_back(node.paths[k1].back());
+            }
+            while (node.paths[k2].size() < max_length) {
+                node.paths[k2].push_back(node.paths[k2].back());
+            }
 
             for (int t = 0; t < max_length; ++t) {
                 Position p1, p2;
@@ -378,18 +395,19 @@ bool ChessGame::findConflicts(const Node& node, const std::vector<King>& kings, 
                 
 
                 // If one path is shorter, keep checking the final positions for conflicts
-                if (t1 >= path1.size()) {
-                    p1 = path1.back(); // Last position of king1
-                } else {
-                    p1 = path1[t1];
-                }
+                // if (t1 >= path1.size()) {
+                //     p1 = path1.back(); // Last position of king1
+                // } else {
+                //     p1 = path1[t1];
+                // }
 
-                if (t2 >= path2.size()) {
-                    p2 = path2.back(); // Last position of king2
-                } else {
-                    p2 = path2[t2];
-                }
-
+                // if (t2 >= path2.size()) {
+                //     p2 = path2.back(); // Last position of king2
+                // } else {
+                //     p2 = path2[t2];
+                // }
+                p1 = node.paths[k1][t1];
+                p2 = node.paths[k2][t2];
                 // Detect vertex conflict
                 if (p1 == p2) {
                     conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
@@ -474,7 +492,7 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
             if (conflict) continue;
 
 
-            int heuristic_cost = kings[kingIndex].distance_map[next];
+            int heuristic_cost = 10*kings[kingIndex].distance_map[next];
             // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
             int new_cost = cost + 1 + heuristic_cost;
             

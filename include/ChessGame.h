@@ -36,7 +36,7 @@ private:
     bool withinBounds(const Position& pos);
     
     std::vector<Position> lowLevelSearch(const int kingIndex, int startTime, const Node curr, int& startTimeStep);
-    bool findConflicts( const Node& node,  const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2);
+    bool findConflicts(  Node& node,  const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2);
     std::unordered_map<Position, int, PositionHasher> calculateDijkstraMap(const Position& goal, const std::vector<std::vector<int>>& grid);
     int calculateCost(const std::vector<std::vector<Position>>& paths);
     int manhattanDistance(const Position& a, const Position& b);
