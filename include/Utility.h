@@ -66,7 +66,7 @@ struct PositionTimeHasher {
 
 struct Node {
     std::vector<std::vector<Position>> paths;
-    std::unordered_map<int, std::unordered_set<Constraint, ConstraintHasher>> constraints; // Set of constraints per king
+    mutable std::unordered_map<int, std::unordered_set<Constraint, ConstraintHasher>> constraints; // Set of constraints per king
     int cost;
 
     Node(int k) : paths(k), cost(0) {}
