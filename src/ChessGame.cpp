@@ -397,6 +397,16 @@ int ChessGame::calculateCost(const std::vector<std::vector<Position>>& paths) {
 }
 
 bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2) {
+    
+    using ConflictPair = std::pair<std::tuple<int, int, int, int, int>, std::tuple<int, int, int, int, int>>; // Pair of conflicts
+    auto cmp = [this](const ConflictPair& a, const ConflictPair& b) {
+        // Compare minimum distances to goal
+        int a_dist_min = std::min(std::get<4>(a.first), std::get<4>(a.second));
+        int b_dist_min = std::min(std::get<4>(b.first), std::get<4>(b.second));
+        return a_dist_min > b_dist_min; // Greater distance should be placed at the end
+    };
+    std::priority_queue<ConflictPair, std::vector<ConflictPair>, decltype(cmp)> conflictQueue(cmp);
+    
     for (int k1 = 0; k1 < kings.size(); ++k1) {
         for (int k2 = 0; k2 < kings.size(); ++k2) {
             if(k1==k2) continue;
@@ -431,10 +441,15 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
            
                 p1 = node.paths[k1][t1];
                 p2 = node.paths[k2][t2];
+
+                int dist_to_goal1 = manhattanDistance(p1, kings[k1].target);
+                int dist_to_goal2 = manhattanDistance(p2, kings[k2].target);
+                int min_dist_to_goal = std::min(dist_to_goal1, dist_to_goal2);
                 // Detect vertex conflict
                 if (p1 == p2) {
-                    conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
-                    conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
+                    // conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
+                    // conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
+                    // return true;
                     // if(isDeadlocked[0]!=-1) {
                     //     int deadlock1 = isDeadlocked[0];
                     //     int deadlock2 = isDeadlocked[1];
@@ -442,7 +457,9 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                     //         continue;
                     //     }
                     // }
-                    return true;
+                    // conflictQueue.emplace(k1, t, p1.x, p1.y, min_dist_to_goal);
+                    auto conflictPair = std::make_pair(std::make_tuple(k1, t, p1.x, p1.y, min_dist_to_goal), std::make_tuple(k2, t2, p2.x, p2.y, min_dist_to_goal));
+                    conflictQueue.push(conflictPair);
                 }
 
                 // Detect adjacency conflict
@@ -451,12 +468,23 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                     {p1.x + 1, p1.y + 1}, {p1.x - 1, p1.y - 1}, {p1.x + 1, p1.y - 1}, {p1.x - 1, p1.y + 1}
                 };
                 if (std::find(adjacents.begin(), adjacents.end(), p2) != adjacents.end()) {
-                    conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
-                    conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
-                    return true;
+                    // conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
+                    // conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
+                    // return true;
+                    auto conflictPair = std::make_pair(std::make_tuple(k1, t, p1.x, p1.y, min_dist_to_goal), std::make_tuple(k2, t2, p2.x, p2.y, min_dist_to_goal));
+                    conflictQueue.push(conflictPair);
                 }
             }
         }
+    }
+
+    if (!conflictQueue.empty()) {
+        auto top_pair = conflictQueue.top();
+        auto firstElem = top_pair.first;
+        auto secondElem = top_pair.second;
+        conflict1 = std::make_tuple(std::get<0>(firstElem), std::get<1>(firstElem), std::get<2>(firstElem), std::get<3>(firstElem));
+        conflict2 = std::make_tuple(std::get<0>(secondElem), std::get<1>(secondElem), std::get<2>(secondElem), std::get<3>(secondElem));
+        return true;
     }
     return false; // No conflicts found
 }
