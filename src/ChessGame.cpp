@@ -5,7 +5,7 @@
 #include <fstream>
 
 ChessGame::ChessGame(int n, const std::vector<std::vector<bool>>& initialGrid, std::vector<King>& allKings)
-    : size(n), grid(n, std::vector<int>(n, 0)), kings(allKings) {
+    : size(n), grid(n, std::vector<int>(n, 0)), kings(allKings), traffic(n, std::vector<int>(n, 0)){
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             if (initialGrid[i][j]) {
@@ -100,6 +100,7 @@ bool ChessGame::findPathsCBS() {
         
 
         open_list.pop();
+
         std::tuple<int, int, int, int> conflict1;
         std::tuple<int, int, int, int> conflict2;
         if (!findConflicts(curr, kings, conflict1, conflict2)) {
@@ -123,40 +124,43 @@ bool ChessGame::findPathsCBS() {
         prevAgent1 = agent1;
         prevAgent2 = agent2;
 
-        if (num_conflicts >= 50) {
-            std::cerr << "Deadlock detected between agents " << agent1 << " and " << agent2 << ". Replanning...\n";
+        // if (num_conflicts >= 50) {
+        //     std::cerr << "Deadlock detected between agents " << agent1 << " and " << agent2 << ". Replanning...\n";
+        //     for(int i=0;i<kings.size();i++) {
+        //         kings[i].path = curr.paths[i];
+        //     }
+        //     return false;
+        //     // Replan both agents from scratch
+        //     int startTimeStep = 0;
+        //     // toFindConflict[0] = 
+        //     curr.constraints[agent1].clear();
+        //     curr.constraints[agent2].clear();
+        //     std::vector<Position> newPath1 = lowLevelSearch(agent1, 0, curr, startTimeStep);
+        //     std::vector<Position> newPath2 = lowLevelSearch(agent2, 0, curr, startTimeStep);
+        //     curr.paths[agent1].clear();
+        //     curr.paths[agent2].clear();
+
+        //     curr.paths[agent1].push_back(kings[agent1].start);
+        //     curr.paths[agent2].push_back(kings[agent2].start);
+        //     for(int i=1;i<=newPath1.size();i++) {
+        //         curr.paths[agent1].push_back(newPath1[i-1]);
+        //     }
+        //     for(int i=1;i<=newPath2.size();i++) {
+        //         curr.paths[agent2].push_back(newPath2[i-1]);
+        //     }
             
-            // Replan both agents from scratch
-            int startTimeStep = 0;
-            // toFindConflict[0] = 
-            curr.constraints[agent1].clear();
-            curr.constraints[agent2].clear();
-            std::vector<Position> newPath1 = lowLevelSearch(agent1, 0, curr, startTimeStep);
-            std::vector<Position> newPath2 = lowLevelSearch(agent2, 0, curr, startTimeStep);
-            curr.paths[agent1].clear();
-            curr.paths[agent2].clear();
 
-            curr.paths[agent1].push_back(kings[agent1].start);
-            curr.paths[agent2].push_back(kings[agent2].start);
-            for(int i=1;i<=newPath1.size();i++) {
-                curr.paths[agent1].push_back(newPath1[i-1]);
-            }
-            for(int i=1;i<=newPath2.size();i++) {
-                curr.paths[agent2].push_back(newPath2[i-1]);
-            }
-            
+        //     curr.cost = calculateCost(curr.paths);
+        //     // std::priority_queue<Node, std::vector<Node>, CompareNode>  empty;
+        //     // std::swap(open_list, empty);
 
-            curr.cost = calculateCost(curr.paths);
-            // std::priority_queue<Node, std::vector<Node>, CompareNode>  empty;
-            // std::swap(open_list, empty);
+        //     open_list.push(curr);
 
-            open_list.push(curr);
-
-            // Reset the repeated conflict count
-            num_conflicts = 0;
-            iter++;
-            continue;
-        }
+        //     // Reset the repeated conflict count
+        //     num_conflicts = 0;
+        //     iter++;
+        //     continue;
+        // }
 
 
 
@@ -208,6 +212,9 @@ bool ChessGame::findPathsCBS() {
             }
             
         }
+        else {
+            std::cerr<<"Empty path for king "<<king1<<"\n";
+        }
 
         bool validChild1 = true;
         
@@ -216,6 +223,10 @@ bool ChessGame::findPathsCBS() {
             // return;
             validChild1 = false;
         }
+        // if(child1.paths[king1].size()==0) {
+        //     validChild1 = false;
+        //     std::cerr<<"Empty path for king "<<king1<<"\n";
+        // }
 
         
 
@@ -227,9 +238,7 @@ bool ChessGame::findPathsCBS() {
         std::vector<Position> existingPath2 = child2.paths[king2];
         int startTimeStep2 = 0;
         std::vector<Position> newPath2 = lowLevelSearch(king2, 0, child2, startTimeStep2);
-        if(startTimeStep2!=timestep2-1) {
-            std::cerr<<"Start time step not equal to timestep2\n";
-        }
+
 
         if (!newPath2.empty()) {
             if(!isPathValid(newPath2)) {
@@ -258,6 +267,9 @@ bool ChessGame::findPathsCBS() {
             }
         }
 
+        else {
+            std::cerr<<"Empty path for king "<<king2<<"\n";
+        }
 
 
         child2.cost = calculateCost(child2.paths);
@@ -279,10 +291,17 @@ bool ChessGame::findPathsCBS() {
             validChild2 = false;
         }
 
+        // if(child2.paths[king2].size()==0) {
+        //     validChild2 = false;
+        //     std::cerr<<"Empty path for king "<<king2<<"\n";
+        // }
+
         if(validChild1) {
+            
             if(numConflictsChild1<numConflictsCurr && child1.cost<=curr.cost ) {
-                open_list = std::queue<Node>();
+
                 // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
+                open_list = std::queue<Node>();
                 open_list.push(child1);
                 iter++;
                 continue;
@@ -294,8 +313,9 @@ bool ChessGame::findPathsCBS() {
 
         if(validChild2) {
             if(numConflictsChild2<numConflictsCurr && child2.cost<=curr.cost) {
-                open_list = std::queue<Node>();
+
                 // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
+                open_list = std::queue<Node>();
                 open_list.push(child2);
                 iter++;
                 continue;
@@ -304,17 +324,77 @@ bool ChessGame::findPathsCBS() {
 
 
         if(validChild1) {
-
-            if (!child1.paths[king1].empty()) {
-                open_list.push(child1);
-            }   
+            if(validChild2) {
+                if(child1.cost>curr.cost && child2.cost > curr.cost) {
+                    if(child1.cost>child2.cost) {
+                        // open_list = std::queue<Node>();
+                        if(!child1.paths[king1].empty()) {
+                            open_list.push(child1);
+                        }
+                        else {
+                            std::cout<<"chumma \n";
+                        }
+                        // open_list.push(child2
+                        if(!child2.paths[king2].empty()) {
+                            open_list.push(child2);
+                        }
+                        
+                    }
+                    else {
+                        open_list = std::queue<Node>();
+                        if(!child2.paths[king2].empty()) {
+                            open_list.push(child2);
+                        }
+                        if(!child1.paths[king1].empty()) {
+                            open_list.push(child1);
+                        }
+                        
+                    }
+                    iter++;
+                    continue;
+                }
+            }
+            
         }
-
+        if(!validChild1) {
+            std::cout<<"just checking \n";
+        }
+        if(!validChild2) {
+            std::cout<<"just checking \n";
+        }
+        if(child1.cost>child2.cost) {
+            if(validChild1) {
+                if(!child1.paths[king1].empty()) {
+                    open_list.push(child1);
+                }
+                if(validChild2) {
+                    if (!child2.paths[king2].empty()) {
+                        open_list.push(child2);
+                    }
+                }
+            }
+        }
+        else {
+            if(validChild2) {
+                if (!child2.paths[king2].empty()) {
+                    open_list.push(child2);
+                }
+                if(validChild1) {
+                    if (!child1.paths[king1].empty()) {
+                        open_list.push(child1);
+                    }
+                }
+            }
+        }
+        if (!child1.paths[king1].empty()) {
+                open_list.push(child1);
+        }   
         if(validChild2) {
             if (!child2.paths[king2].empty()) {
                 open_list.push(child2);
             }
         }
+
 
         
         
@@ -497,7 +577,7 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
     std::priority_queue<std::tuple<int, int, Position>, std::vector<std::tuple<int, int, Position>>, std::greater<>> open_list;
     std::unordered_map<std::tuple<Position, int>, int, PositionTimeHasher> cost_map;
     std::unordered_map<std::tuple<Position, int>, std::tuple<Position, int>, PositionTimeHasher> came_from;
-    std::unordered_set<Position, PositionHasher> closed_list;
+    std::unordered_set<std::tuple<Position, int>, PositionTimeHasher> closed_list;
     Position start = Position(0,0);
     start = curr.paths[kingIndex][startTime];
     std::tuple<Position, int> start_key = {start, startTime};
@@ -507,7 +587,8 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
     while (!open_list.empty()) {
         auto [cost, timeStep, current] = open_list.top();
         open_list.pop();
-        closed_list.insert(current);
+        std::tuple<Position, int> current_key = {current, timeStep};
+        closed_list.insert(current_key);
         if (current == kings[kingIndex].target) {
             std::vector<Position> path;
             std::tuple<Position, int> current_key = {current, timeStep};
@@ -536,9 +617,9 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
         for (auto& next : neighbors) {
             if (next.x < 0 || next.y < 0 || next.x >= size || next.y >= size) continue;
             if (grid[next.x][next.y] < 0) continue; // Skip blocked cells
-            if (closed_list.find(next) != closed_list.end() ) {
-                continue;
-            }
+            std::tuple<Position, int> next_key = {next, timeStep + 1};
+            if (closed_list.find(next_key) != closed_list.end()) continue;
+
             
 
             bool conflict = false;
@@ -554,7 +635,6 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
             // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
             int new_cost = cost + 1 + heuristic_cost;
             
-            std::tuple<Position, int> next_key = {next, timeStep + 1};
 
             if (cost_map.find(next_key) == cost_map.end() || new_cost < cost_map[next_key]) {
                 cost_map[next_key] = new_cost;
