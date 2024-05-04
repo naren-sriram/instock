@@ -5,7 +5,7 @@
 #include <fstream>
 
 ChessGame::ChessGame(int n, const std::vector<std::vector<bool>>& initialGrid, std::vector<King>& allKings)
-    : size(n), grid(n, std::vector<int>(n, 0)), kings(allKings), traffic(n, std::vector<int>(n, 0)){
+    : size(n), grid(n, std::vector<int>(n, 0)), kings(allKings) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             if (initialGrid[i][j]) {
@@ -100,7 +100,6 @@ bool ChessGame::findPathsCBS() {
         
 
         open_list.pop();
-
         std::tuple<int, int, int, int> conflict1;
         std::tuple<int, int, int, int> conflict2;
         if (!findConflicts(curr, kings, conflict1, conflict2)) {
@@ -299,9 +298,8 @@ bool ChessGame::findPathsCBS() {
         if(validChild1) {
             
             if(numConflictsChild1<numConflictsCurr && child1.cost<=curr.cost ) {
-
-                // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
                 open_list = std::queue<Node>();
+                // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
                 open_list.push(child1);
                 iter++;
                 continue;
@@ -313,9 +311,8 @@ bool ChessGame::findPathsCBS() {
 
         if(validChild2) {
             if(numConflictsChild2<numConflictsCurr && child2.cost<=curr.cost) {
-
-                // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
                 open_list = std::queue<Node>();
+                // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
                 open_list.push(child2);
                 iter++;
                 continue;
@@ -327,12 +324,8 @@ bool ChessGame::findPathsCBS() {
             if(validChild2) {
                 if(child1.cost>curr.cost && child2.cost > curr.cost) {
                     if(child1.cost>child2.cost) {
-                        // open_list = std::queue<Node>();
                         if(!child1.paths[king1].empty()) {
                             open_list.push(child1);
-                        }
-                        else {
-                            std::cout<<"chumma \n";
                         }
                         // open_list.push(child2
                         if(!child2.paths[king2].empty()) {
@@ -341,7 +334,6 @@ bool ChessGame::findPathsCBS() {
                         
                     }
                     else {
-                        open_list = std::queue<Node>();
                         if(!child2.paths[king2].empty()) {
                             open_list.push(child2);
                         }
@@ -355,12 +347,6 @@ bool ChessGame::findPathsCBS() {
                 }
             }
             
-        }
-        if(!validChild1) {
-            std::cout<<"just checking \n";
-        }
-        if(!validChild2) {
-            std::cout<<"just checking \n";
         }
         if(child1.cost>child2.cost) {
             if(validChild1) {
@@ -386,15 +372,14 @@ bool ChessGame::findPathsCBS() {
                 }
             }
         }
-        if (!child1.paths[king1].empty()) {
-                open_list.push(child1);
-        }   
-        if(validChild2) {
-            if (!child2.paths[king2].empty()) {
-                open_list.push(child2);
-            }
-        }
-
+        // if (!child1.paths[king1].empty()) {
+        //         open_list.push(child1);
+        // }   
+        // if(validChild2) {
+        //     if (!child2.paths[king2].empty()) {
+        //         open_list.push(child2);
+        //     }
+        // }
 
         
         
@@ -631,7 +616,7 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
             if (conflict) continue;
 
 
-            int heuristic_cost = 10*kings[kingIndex].distance_map[next];
+            int heuristic_cost = 1000*kings[kingIndex].distance_map[next];
             // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
             int new_cost = cost + 1 + heuristic_cost;
             
