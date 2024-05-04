@@ -5,7 +5,7 @@
 #include <fstream>
 
 ChessGame::ChessGame(int n, const std::vector<std::vector<bool>>& initialGrid, std::vector<King>& allKings)
-    : size(n), grid(n, std::vector<int>(n, 0)), kings(allKings) {
+    : size(n), grid(n, std::vector<int>(n, 0)), kings(allKings), traffic(n, std::vector<int>(n, 0)){
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             if (initialGrid[i][j]) {
@@ -100,15 +100,14 @@ bool ChessGame::findPathsCBS() {
         
 
         open_list.pop();
-        std::tuple<int, int, int, int> conflict1;
-        std::tuple<int, int, int, int> conflict2;
+        std::tuple<int, int, int, int> conflict1 = {-1,-1,-1,-1};
+        std::tuple<int, int, int, int> conflict2 = {-1,-1,-1,-1};
         if (!findConflicts(curr, kings, conflict1, conflict2)) {
             for(int i=0;i<kings.size();i++) {
                 kings[i].path = curr.paths[i];
             }
             return true;
         }
-
 
         auto [king1, timestep1, x1, y1] = conflict1;
         auto [king2, timestep2, x2, y2] = conflict2;
@@ -164,50 +163,50 @@ bool ChessGame::findPathsCBS() {
 
 
         
-        for(auto path: curr.paths) {
-            if(!isPathValid(path)) {
-                std::cerr<<"Invalid path before conflict resolution itself!\n";
-            }
-        }
-
+        // for(auto path: curr.paths) {
+        //     if(!isPathValid(path)) {
+        //         std::cerr<<"Invalid path before conflict resolution itself!\n";
+        //     }
+        // }
+        if(king1==-1 && king2==-1) continue;
+        
         Node child1 = curr, child2 = curr;
-
-        child1.constraints[king1].insert({timestep1, x1, y1});
-        child2.constraints[king2].insert({timestep2, x2, y2});
+        std::cout<<"conflict between kings "<<king1<<" and "<<king2<<" at "<<x1<<","<<y1<<" and "<<x2<<","<<y2<<" at time "<<timestep1<<" and "<<timestep2<<"\n";
+        if(king1!=-1)
+            child1.constraints[king1].insert({timestep1, x1, y1});
+        if(king2!=-1)
+            child2.constraints[king2].insert({timestep2, x2, y2});
         timestep1 = 0;
         timestep2 = 0;
         //calculate new path for child 1
         int startTimeStep1 = 0;
-        std::vector<Position> newPath1 = lowLevelSearch(king1, 0, child1, startTimeStep1);
-        if(!isPathValid(newPath1)) {
-            std::cerr<<"Invalid path after conflict resolution!!! low level seaerch issue\n";
-        }
+        std::vector<Position> newPath1;
+        if(king1!=-1)
+            newPath1 = lowLevelSearch(king1, 0, child1, startTimeStep1);
+        // if(!isPathValid(newPath1)) {
+        //     std::cerr<<"Invalid path after conflict resolution!!! low level seaerch issue\n";
+        // }
         
-        if(startTimeStep1!=timestep1-1 && startTimeStep1!=0) {
-            std::cerr<<"Start time step not equal to timestep1\n";
+        // if(startTimeStep1!=timestep1-1 && startTimeStep1!=0) {
+        //     std::cerr<<"Start time step not equal to timestep1\n";
+        // }
+
+        if(newPath1.size()==0) {
+            std::cerr<<"Empty path for king "<<king1<<"\n";
         }
 
         if (!newPath1.empty()) {
-            // if(!isPathValid(child1.paths[king1])) {
-            //     std::cerr<<"dont know wtf is going on!\n";
-            
-            // }
-            // child1.paths[king1].clear();
-            // if(!isPathValid(curr.paths[king1])) {
-            //     std::cerr<<"Invalid path before merge itself!\n";
-            // }
-            // for(int i=0;i<timestep1;i++) {
-            //     child1.paths[king1].push_back(curr.paths[king1][i]);
-            // }
-            
-            // if(!isPathValid(child1.paths[king1])) {
-            //     std::cerr<<"Invalid path before merge until timestep "<<timestep1<<" itself!\n";
-            // }
-            // child1.paths[king1].insert(child1.paths[king1].end(), newPath1.begin(), newPath1.end());
+            traffic[x1][y1]--;
+            int pathSize = child1.paths[king1].size();
             child1.paths[king1].clear();
             child1.paths[king1].push_back(kings[king1].start);
             for(int i=1;i<=newPath1.size();i++) {
                 child1.paths[king1].push_back(newPath1[i-1]);
+            }
+            if(child1.paths[king1].size()<pathSize) {
+                while(child1.paths[king1].size()<pathSize) {
+                    child1.paths[king1].push_back(child1.paths[king1].back());
+                }
             }
             
         }
@@ -215,54 +214,41 @@ bool ChessGame::findPathsCBS() {
             std::cerr<<"Empty path for king "<<king1<<"\n";
         }
 
-        bool validChild1 = true;
+        // bool validChild1 = true;
         
-        if (!isPathValid(child1.paths[king1])) {
-            std::cerr << "Invalid solution: King "<<king1<<" path has invalid moves after conflict resolution.\n";
-            // return;
-            validChild1 = false;
-        }
-        // if(child1.paths[king1].size()==0) {
+        // if (!isPathValid(child1.paths[king1])) {
+        //     std::cerr << "Invalid solution: King "<<king1<<" path has invalid moves after conflict resolution.\n";
+        //     // return;
         //     validChild1 = false;
-        //     std::cerr<<"Empty path for king "<<king1<<"\n";
         // }
 
         
 
-            
-        // }
         child1.cost = calculateCost(child1.paths);
 
         //calculate new path for child 2
-        std::vector<Position> existingPath2 = child2.paths[king2];
         int startTimeStep2 = 0;
-        std::vector<Position> newPath2 = lowLevelSearch(king2, 0, child2, startTimeStep2);
+        std::vector<Position> newPath2;
+        if(king2!=-1)
+            newPath2 = lowLevelSearch(king2, 0, child2, startTimeStep2);
 
 
         if (!newPath2.empty()) {
-            if(!isPathValid(newPath2)) {
-                std::cerr<<"Invalid path after conflict resolution!!! low level seaerch issue\n";
-            }
-            // if(!isPathValid(child2.paths[king2])) {
-            //     std::cerr<<"dont know wtf is going on!\n";
-            
+            // if(!isPathValid(newPath2)) {
+            //     std::cerr<<"Invalid path after conflict resolution!!! low level seaerch issue\n";
             // }
-            // child2.paths[king2].clear();
-            // if(!isPathValid(curr.paths[king2])) {
-            //     std::cerr<<"Invalid path before merge itself!\n";
-            // }
-            // for(int i=0;i<timestep2;i++) {
-            //     child2.paths[king2].push_back(curr.paths[king2][i]);
-            // }
-            
-            // if(!isPathValid(child2.paths[king2])) {
-            //     std::cerr<<"Invalid path before merge until timestep "<<timestep1<<" itself!\n";
-            // }
-            // child2.paths[king2].insert(child2.paths[king2].end(), newPath2.begin(), newPath2.end());
+            traffic[x2][y2]--;
+            int pathSize = child2.paths[king2].size();
             child2.paths[king2].clear();
             child2.paths[king2].push_back(kings[king2].start);
             for(int i=1;i<=newPath2.size();i++) {
                 child2.paths[king2].push_back(newPath2[i-1]);
+            }
+            if(child2.paths[king2].size()<pathSize) {
+                
+                while(child2.paths[king2].size()<pathSize) {
+                    child2.paths[king2].push_back(child2.paths[king2].back());
+                } 
             }
         }
 
@@ -275,114 +261,134 @@ bool ChessGame::findPathsCBS() {
         int numConflictsCurr = calculateNumberOfConflicts(curr.paths);
         int numConflictsChild1 = calculateNumberOfConflicts(child1.paths);
         int numConflictsChild2 = calculateNumberOfConflicts(child2.paths);
-        std::vector<Node> children = {curr, child1, child2};
 
 
         
         
         // bypass conflicts
 
-        bool validChild2 = true;
+        // bool validChild2 = true;
 
-        if (!isPathValid(child2.paths[king2])) {
-            std::cerr << "Invalid solution: King "<<king2<<" path has invalid moves after conflict resolution.\n";
-            // return;
-            validChild2 = false;
-        }
+        // if (!isPathValid(child2.paths[king2])) {
+        //     std::cerr << "Invalid solution: King "<<king2<<" path has invalid moves after conflict resolution.\n";
+        //     // return;
+        //     validChild2 = false;
+        // }
 
         // if(child2.paths[king2].size()==0) {
         //     validChild2 = false;
         //     std::cerr<<"Empty path for king "<<king2<<"\n";
         // }
 
-        if(validChild1) {
-            
-            if(numConflictsChild1<numConflictsCurr && child1.cost<=curr.cost ) {
-                open_list = std::queue<Node>();
-                // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
-                open_list.push(child1);
-                iter++;
-                continue;
+        // if(validChild1) {
+        if(king1!=-1) {
+            if(child1.paths[king1].size()<=1) {
+                std::cerr<<"Empty path for king "<<king1<<"\n";
             }
+            else {
+                 if(numConflictsChild1<numConflictsCurr && child1.cost<=curr.cost ) {
+                    open_list = std::queue<Node>();
+                    // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
+
+                    open_list.push(child1);
+                    iter++;
+                    continue;
+                }
+            }
+           
         }
 
 
         
-
-        if(validChild2) {
-            if(numConflictsChild2<numConflictsCurr && child2.cost<=curr.cost) {
-                open_list = std::queue<Node>();
-                // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
-                open_list.push(child2);
-                iter++;
-                continue;
+        if(king2!=-2) {
+            if(child2.paths[king2].size()<=1) {
+                std::cerr<<"Empty path for king "<<king2<<"\n";
             }
-        }
-
-
-        if(validChild1) {
-            if(validChild2) {
-                if(child1.cost>curr.cost && child2.cost > curr.cost) {
-                    if(child1.cost>child2.cost) {
-                        if(!child1.paths[king1].empty()) {
-                            open_list.push(child1);
-                        }
-                        // open_list.push(child2
-                        if(!child2.paths[king2].empty()) {
-                            open_list.push(child2);
-                        }
-                        
-                    }
-                    else {
-                        if(!child2.paths[king2].empty()) {
-                            open_list.push(child2);
-                        }
-                        if(!child1.paths[king1].empty()) {
-                            open_list.push(child1);
-                        }
-                        
-                    }
+            else {
+                if(numConflictsChild2<numConflictsCurr && child2.cost<=curr.cost) {
+                    open_list = std::queue<Node>();
+                    // open_list = std::priority_queue<Node, std::vector<Node>, CompareNode>();
+                    open_list.push(child2);
                     iter++;
                     continue;
                 }
             }
             
         }
-        if(child1.cost>child2.cost) {
-            if(validChild1) {
-                if(!child1.paths[king1].empty()) {
-                    open_list.push(child1);
-                }
-                if(validChild2) {
-                    if (!child2.paths[king2].empty()) {
-                        open_list.push(child2);
-                    }
-                }
-            }
-        }
-        else {
-            if(validChild2) {
-                if (!child2.paths[king2].empty()) {
-                    open_list.push(child2);
-                }
-                if(validChild1) {
-                    if (!child1.paths[king1].empty()) {
-                        open_list.push(child1);
-                    }
-                }
-            }
-        }
+
+
+        // if(validChild1) {
+        //     if(validChild2) {
+        //         if(child1.cost>curr.cost && child2.cost > curr.cost) {
+        //             if(child1.cost>child2.cost) {
+        //                 if(!child1.paths[king1].empty()) {
+        //                     open_list.push(child1);
+        //                 }
+        //                 // open_list.push(child2
+        //                 if(!child2.paths[king2].empty()) {
+        //                     open_list.push(child2);
+        //                 }
+                        
+        //             }
+        //             else {
+        //                 if(!child2.paths[king2].empty()) {
+        //                     open_list.push(child2);
+        //                 }
+        //                 if(!child1.paths[king1].empty()) {
+        //                     open_list.push(child1);
+        //                 }
+                        
+        //             }
+        //             iter++;
+        //             continue;
+        //         }
+        //     }
+            
+        // }
+        // if(child1.cost>child2.cost) {
+        //     if(validChild1) {
+        //         if(!child1.paths[king1].empty()) {
+        //             open_list.push(child1);
+        //         }
+        //         if(validChild2) {
+        //             if (!child2.paths[king2].empty()) {
+        //                 open_list.push(child2);
+        //             }
+        //         }
+        //     }
+        //     iter++;
+        //     continue;
+        // }
+        // else {
+        //     if(validChild2) {
+        //         if (!child2.paths[king2].empty()) {
+        //             open_list.push(child2);
+        //         }
+        //         if(validChild1) {
+        //             if (!child1.paths[king1].empty()) {
+        //                 open_list.push(child1);
+        //             }
+        //         }
+        //     }
+        //     iter++;
+        //     continue;
+        // }
         // if (!child1.paths[king1].empty()) {
         //         open_list.push(child1);
         // }   
-        // if(validChild2) {
-        //     if (!child2.paths[king2].empty()) {
-        //         open_list.push(child2);
-        //     }
+
+        // if (!child2.paths[king2].empty()) {
+        //     open_list.push(child2);
         // }
 
+        // open_list.push(child1);
+        // open_list.push(child2);
         
-        
+
+        if(king1!=-1 && child1.paths[king1].size()>1)
+            open_list.push(child1);
+        if(king2!=-1 && child2.paths[king2].size()>1)
+            open_list.push(child2);
         // iter++;
         iter++;
         
@@ -412,7 +418,7 @@ int ChessGame::calculateNumberOfConflicts( const std::vector<std::vector<Positio
             while (path2.size() < max_length) {
                 path2.push_back(path2.back());
             }
-            for (int t = 0; t < max_length; ++t) {
+            for (int t = 1; t < max_length; ++t) {
                 
                 Position p1, p2;
                 int t1 = t, t2 = t;
@@ -436,6 +442,8 @@ int ChessGame::calculateNumberOfConflicts( const std::vector<std::vector<Positio
                 if (p1 == p2) {
 
                     numberOfConflicts++;
+                    traffic[p1.x][p1.y]++;
+                    traffic[p2.x][p2.y]++;
                 }
 
                 // Detect adjacency conflict
@@ -446,6 +454,8 @@ int ChessGame::calculateNumberOfConflicts( const std::vector<std::vector<Positio
                 if (std::find(adjacents.begin(), adjacents.end(), p2) != adjacents.end()) {
                     
                     numberOfConflicts++;
+                    traffic[p1.x][p1.y]++;
+                    traffic[p2.x][p2.y]++;
                 }
             }
         }
@@ -486,7 +496,7 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                 node.paths[k2].push_back(node.paths[k2].back());
             }
 
-            for (int t = 0; t < max_length; ++t) {
+            for (int t = 1; t < max_length; ++t) {
                 Position p1, p2;
                 int t1 = t, t2 = t;
 
@@ -512,9 +522,16 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                 int min_dist_to_goal = std::min(dist_to_goal1, dist_to_goal2);
                 // Detect vertex conflict
                 if (p1 == p2) {
-                    // conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
-                    // conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
-                    // return true;
+                    if(t1!=0)
+                        conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
+                    if(t2!=0)
+                        conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
+                    if(t1==0 && t2==0) {
+                        return false;
+                    }
+                    // traffic[p1.x][p1.y]++;
+                    // traffic[p2.x][p2.y]++;
+                    return true;
                     // if(isDeadlocked[0]!=-1) {
                     //     int deadlock1 = isDeadlocked[0];
                     //     int deadlock2 = isDeadlocked[1];
@@ -533,9 +550,16 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                     {p1.x + 1, p1.y + 1}, {p1.x - 1, p1.y - 1}, {p1.x + 1, p1.y - 1}, {p1.x - 1, p1.y + 1}
                 };
                 if (std::find(adjacents.begin(), adjacents.end(), p2) != adjacents.end()) {
-                    // conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
-                    // conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
-                    // return true;
+                    if(t1!=0)
+                        conflict1 = std::make_tuple(k1, t1, p1.x, p1.y);
+                    if(t2!=0)
+                        conflict2 = std::make_tuple(k2, t2, p2.x, p2.y);
+                     if(t1==0 && t2==0) {
+                        return false;
+                    }
+                    // traffic[p1.x][p1.y]++;
+                    // traffic[p2.x][p2.y]++;
+                    return true;
                     auto conflictPair = std::make_pair(std::make_tuple(k1, t, p1.x, p1.y, min_dist_to_goal), std::make_tuple(k2, t2, p2.x, p2.y, min_dist_to_goal));
                     conflictQueue.push(conflictPair);
                 }
@@ -543,14 +567,14 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
         }
     }
 
-    if (!conflictQueue.empty()) {
-        auto top_pair = conflictQueue.top();
-        auto firstElem = top_pair.first;
-        auto secondElem = top_pair.second;
-        conflict1 = std::make_tuple(std::get<0>(firstElem), std::get<1>(firstElem), std::get<2>(firstElem), std::get<3>(firstElem));
-        conflict2 = std::make_tuple(std::get<0>(secondElem), std::get<1>(secondElem), std::get<2>(secondElem), std::get<3>(secondElem));
-        return true;
-    }
+    // if (!conflictQueue.empty()) {
+    //     auto top_pair = conflictQueue.top();
+    //     auto firstElem = top_pair.first;
+    //     auto secondElem = top_pair.second;
+    //     conflict1 = std::make_tuple(std::get<0>(firstElem), std::get<1>(firstElem), std::get<2>(firstElem), std::get<3>(firstElem));
+    //     conflict2 = std::make_tuple(std::get<0>(secondElem), std::get<1>(secondElem), std::get<2>(secondElem), std::get<3>(secondElem));
+    //     return true;
+    // }
     return false; // No conflicts found
 }
 
@@ -616,10 +640,10 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
             if (conflict) continue;
 
 
-            int heuristic_cost = 1000*kings[kingIndex].distance_map[next];
+            int heuristic_cost = 100000*kings[kingIndex].distance_map[next];
             // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
-            int new_cost = cost + 1 + heuristic_cost;
-            
+            int new_cost = cost + 1 + heuristic_cost + traffic[next.x][next.y];
+            // + traffic[next.x][next.y]
 
             if (cost_map.find(next_key) == cost_map.end() || new_cost < cost_map[next_key]) {
                 cost_map[next_key] = new_cost;
