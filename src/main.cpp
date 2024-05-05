@@ -17,9 +17,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::string mapFile = cmdArgs.count("input_map") ? cmdArgs["input_map"] : "problem-tests/9/map.txt";  // Get the map file path
-    std::string kingsFile = cmdArgs.count("input_kings") ? cmdArgs["input_kings"] : "problem-tests/9/kings.txt";  // Get the kings file path
-    std::string solutionPath = cmdArgs.count("solution") ? cmdArgs["solution"] : "solution_9.txt";  // Get the solution file path or default
+    std::string mapFile = cmdArgs.count("input_map") ? cmdArgs["input_map"] : "problem-tests/1/map.txt";  // Get the map file path
+    std::string kingsFile = cmdArgs.count("input_kings") ? cmdArgs["input_kings"] : "problem-tests/1/kings.txt";  // Get the kings file path
+    std::string solutionPath = cmdArgs.count("solution") ? cmdArgs["solution"] : "solution_1.txt";  // Get the solution file path or default
 
     if (mapFile.empty() || kingsFile.empty()) {
         std::cerr << "Usage: " << argv[0] << " input_map <map_file> input_kings <kings_file> solution <output_file>s" << std::endl;
@@ -37,7 +37,10 @@ int main(int argc, char* argv[]) {
 
     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
 
-    
+    if(!found) {
+        std::cerr << "No solution found." << std::endl;
+        return 1;
+    }
 
     chessGame.writePathsToFile(solutionPath);
     // write durartion also to the file
@@ -45,7 +48,13 @@ int main(int argc, char* argv[]) {
     
     std::ofstream file(solutionPath, std::ios::app);
     if (file.is_open()) {
+        file<<"---------------------------------"<<std::endl;
+        file <<"High level solver Statistics: "<<std::endl;
         file << "Execution Time: " << duration.count() << " ms" << std::endl;
+        file<<"Total Cost: "<<chessGame.stats.cost<<std::endl;
+        file<<"Number of nodes generated: "<<chessGame.stats.generatedNodes<<std::endl;
+        file<<"Number of nodes expanded: "<<chessGame.stats.expandedNodes<<std::endl;
+        file<<"Number of iterations: "<<chessGame.stats.iterations<<std::endl;
         file.close();
     } else {
         std::cerr << "Failed to open solution file to write execution time." << std::endl;

@@ -28,6 +28,8 @@ def read_trajectories(filename, num_kings):
     with open(filename, 'r') as file:
         lines = [line.strip() for line in file if 'Planning time' not in line and line.strip()]
         for i, line in enumerate(lines):
+            if not line or 'Planning time' in line or any(kw in line for kw in ['iterations', 'nodes', 'Statistics', 'Cost']):
+                continue
             coords = line.split(',')
             if len(coords) < 4:
                 continue
@@ -93,9 +95,9 @@ def visualize(board, trajectories, size):
 
 if __name__ == "__main__":
     args = parse_args(sys.argv)
-    map_file = args.get('input_map', "/home/naren/instock/problem-tests/8/map.txt")
-    kings_file = args.get('input_kings', "/home/naren/instock/problem-tests/8/kings.txt")
-    solution_file = args.get('solution', "solution_8.txt")
+    map_file = args.get('input_map', "/home/naren/instock/problem-tests/1/map.txt")
+    kings_file = args.get('input_kings', "/home/naren/instock/problem-tests/1/kings.txt")
+    solution_file = args.get('solution', "solution_1.txt")
 
     board, size = read_map(map_file)
     num_kings = read_kings(kings_file)
