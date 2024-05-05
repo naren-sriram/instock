@@ -197,7 +197,7 @@ bool ChessGame::findPathsCBS() {
         }
 
         if (!newPath1.empty()) {
-            bool futureConstraintsViolated = checkFutureConstraints(newPath1.back(), timestep1, child1, king1);
+            bool futureConstraintsViolated = checkFutureConstraints(newPath1.back(), newPath1.size()+1, child1, king1);
             if(futureConstraintsViolated) {
                 std::cerr<<"Future constraints violated for king "<<king1<<"\n";
             }
@@ -266,26 +266,14 @@ bool ChessGame::findPathsCBS() {
         int numConflictsCurr = calculateNumberOfConflicts(curr.paths);
         int numConflictsChild1 = calculateNumberOfConflicts(child1.paths);
         int numConflictsChild2 = calculateNumberOfConflicts(child2.paths);
-
+        child1.conflicts = numConflictsChild1;
+        child2.conflicts = numConflictsChild2;
+        curr.conflicts = numConflictsCurr;
 
         
         
         // bypass conflicts
 
-        // bool validChild2 = true;
-
-        // if (!isPathValid(child2.paths[king2])) {
-        //     std::cerr << "Invalid solution: King "<<king2<<" path has invalid moves after conflict resolution.\n";
-        //     // return;
-        //     validChild2 = false;
-        // }
-
-        // if(child2.paths[king2].size()==0) {
-        //     validChild2 = false;
-        //     std::cerr<<"Empty path for king "<<king2<<"\n";
-        // }
-
-        // if(validChild1) {
         if(king1!=-1) {
             if(child1.paths[king1].size()<=1) {
                 std::cerr<<"Empty path for king "<<king1<<"\n";
@@ -534,8 +522,8 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                     if(t1==0 && t2==0) {
                         return false;
                     }
-                    // traffic[p1.x][p1.y]++;
-                    // traffic[p2.x][p2.y]++;
+                    traffic[p1.x][p1.y]++;
+                    traffic[p2.x][p2.y]++;
                     return true;
                     // if(isDeadlocked[0]!=-1) {
                     //     int deadlock1 = isDeadlocked[0];
@@ -545,8 +533,8 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                     //     }
                     // }
                     // conflictQueue.emplace(k1, t, p1.x, p1.y, min_dist_to_goal);
-                    auto conflictPair = std::make_pair(std::make_tuple(k1, t, p1.x, p1.y, min_dist_to_goal), std::make_tuple(k2, t2, p2.x, p2.y, min_dist_to_goal));
-                    conflictQueue.push(conflictPair);
+                    // auto conflictPair = std::make_pair(std::make_tuple(k1, t, p1.x, p1.y, min_dist_to_goal), std::make_tuple(k2, t2, p2.x, p2.y, min_dist_to_goal));
+                    // conflictQueue.push(conflictPair);
                 }
 
                 // Detect adjacency conflict
@@ -562,24 +550,24 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
                      if(t1==0 && t2==0) {
                         return false;
                     }
-                    // traffic[p1.x][p1.y]++;
-                    // traffic[p2.x][p2.y]++;
+                    traffic[p1.x][p1.y]++;
+                    traffic[p2.x][p2.y]++;
                     return true;
-                    auto conflictPair = std::make_pair(std::make_tuple(k1, t, p1.x, p1.y, min_dist_to_goal), std::make_tuple(k2, t2, p2.x, p2.y, min_dist_to_goal));
-                    conflictQueue.push(conflictPair);
+                    // auto conflictPair = std::make_pair(std::make_tuple(k1, t, p1.x, p1.y, min_dist_to_goal), std::make_tuple(k2, t2, p2.x, p2.y, min_dist_to_goal));
+                    // conflictQueue.push(conflictPair);
                 }
             }
         }
     }
 
-    // if (!conflictQueue.empty()) {
-    //     auto top_pair = conflictQueue.top();
-    //     auto firstElem = top_pair.first;
-    //     auto secondElem = top_pair.second;
-    //     conflict1 = std::make_tuple(std::get<0>(firstElem), std::get<1>(firstElem), std::get<2>(firstElem), std::get<3>(firstElem));
-    //     conflict2 = std::make_tuple(std::get<0>(secondElem), std::get<1>(secondElem), std::get<2>(secondElem), std::get<3>(secondElem));
-    //     return true;
-    // }
+    if (!conflictQueue.empty()) {
+        auto top_pair = conflictQueue.top();
+        auto firstElem = top_pair.first;
+        auto secondElem = top_pair.second;
+        conflict1 = std::make_tuple(std::get<0>(firstElem), std::get<1>(firstElem), std::get<2>(firstElem), std::get<3>(firstElem));
+        conflict2 = std::make_tuple(std::get<0>(secondElem), std::get<1>(secondElem), std::get<2>(secondElem), std::get<3>(secondElem));
+        return true;
+    }
     return false; // No conflicts found
 }
 
@@ -625,7 +613,7 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
         open_list.pop();
         std::tuple<Position, int> current_key = {current, timeStep};
         closed_list.insert(current_key);
-        if (current == kings[kingIndex].target) {
+        if (current == kings[kingIndex].target && !checkFutureConstraints(current, timeStep-1, curr, kingIndex)) {
             std::vector<Position> path;
             std::tuple<Position, int> current_key = {current, timeStep};
             while (!(current_key == start_key)) {
@@ -664,16 +652,16 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
             if (king_constraints.find(c) != king_constraints.end()) {
                 conflict = true;
             }
-            if(next.x==kings[kingIndex].target.x && next.y==kings[kingIndex].target.y) {
-                if(checkFutureConstraints(next, timeStep, curr, kingIndex)) {
-                    conflict = true;
-                }
-            }
+            // if(next.x==kings[kingIndex].target.x && next.y==kings[kingIndex].target.y) {
+            //     if(checkFutureConstraints(next, timeStep, curr, kingIndex)) {
+            //         conflict = true;
+            //     }
+            // }
             
             if (conflict) continue;
             if (closed_list.find(next_key) != closed_list.end()) continue;
 
-            int heuristic_cost = 100000*kings[kingIndex].distance_map[next] + traffic[next.x][next.y];
+            int heuristic_cost = 1000*kings[kingIndex].distance_map[next] + traffic[next.x][next.y];
             // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
             int new_cost = cost + 1 + heuristic_cost ;
             // + traffic[next.x][next.y]
