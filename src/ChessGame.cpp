@@ -69,6 +69,7 @@ bool ChessGame::findPathsCBS() {
     std::queue<Node> open_list;
     // std::priority_queue<Node, std::vector<Node>, CompareNode> open_list;
     Node root(kings.size());
+    std::unordered_set<std::pair<std::tuple<int, int, int, int>, std::tuple<int, int, int, int>>, ConflictHasher> conflict_tracker;
     for(int i=0;i<kings.size();i++) {
         root.paths[i].push_back(kings[i].start);
     }
@@ -196,6 +197,10 @@ bool ChessGame::findPathsCBS() {
         }
 
         if (!newPath1.empty()) {
+            bool futureConstraintsViolated = checkFutureConstraints(newPath1.back(), timestep1, child1, king1);
+            if(futureConstraintsViolated) {
+                std::cerr<<"Future constraints violated for king "<<king1<<"\n";
+            }
             traffic[x1][y1]--;
             int pathSize = child1.paths[king1].size();
             child1.paths[king1].clear();
@@ -578,7 +583,29 @@ bool ChessGame::findConflicts( Node& node, const std::vector<King>& kings, std::
     return false; // No conflicts found
 }
 
+bool ChessGame::checkFutureConstraints(const Position toCheck, const int currTimeStep, const Node curr, const int kingIndex) {
+    // get the maximum path size among all paths
+    // start from curr timestep, toCheckPosition and go till max value
+    // check for constraints 
+    // return true if constraints are violated
+    // else return false
+    int maxPathSize = 0;
+    for(int i=0;i<kings.size();i++) {
+        if(curr.paths[i].size()>maxPathSize) {
+            maxPathSize = curr.paths[i].size();
+        }
+    }
+    const auto& king_constraints = curr.constraints[kingIndex];
+            
+    for(int t=currTimeStep+1;t<=maxPathSize;t++) {
+        Constraint c{t, toCheck.x, toCheck.y};
+        if (king_constraints.find(c) != king_constraints.end()) {
+            return true;
+        }
+    }
+    return false;
 
+}
 
 
 std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTime, const Node curr, int& startTimeStep) {
@@ -627,7 +654,7 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
             if (next.x < 0 || next.y < 0 || next.x >= size || next.y >= size) continue;
             if (grid[next.x][next.y] < 0) continue; // Skip blocked cells
             std::tuple<Position, int> next_key = {next, timeStep + 1};
-            if (closed_list.find(next_key) != closed_list.end()) continue;
+            
 
             
 
@@ -637,12 +664,18 @@ std::vector<Position> ChessGame::lowLevelSearch(const int kingIndex, int startTi
             if (king_constraints.find(c) != king_constraints.end()) {
                 conflict = true;
             }
+            if(next.x==kings[kingIndex].target.x && next.y==kings[kingIndex].target.y) {
+                if(checkFutureConstraints(next, timeStep, curr, kingIndex)) {
+                    conflict = true;
+                }
+            }
+            
             if (conflict) continue;
+            if (closed_list.find(next_key) != closed_list.end()) continue;
 
-
-            int heuristic_cost = 100000*kings[kingIndex].distance_map[next];
+            int heuristic_cost = 100000*kings[kingIndex].distance_map[next] + traffic[next.x][next.y];
             // int heuristic_cost = manhattanDistance(next, kings[kingIndex].target);
-            int new_cost = cost + 1 + heuristic_cost + traffic[next.x][next.y];
+            int new_cost = cost + 1 + heuristic_cost ;
             // + traffic[next.x][next.y]
 
             if (cost_map.find(next_key) == cost_map.end() || new_cost < cost_map[next_key]) {
