@@ -37,6 +37,7 @@ struct King {
     std::vector<Position> path;
     std::unordered_map<Position, int, PositionHasher> distance_map;
     int waitCount = 0;
+    
     King(Position start, Position end) : start(start), current(start), target(end) {}
 };
 
@@ -60,17 +61,62 @@ struct PositionTimeHasher {
     std::size_t operator()(const std::tuple<Position, int>& p) const {
         std::size_t pos_hash = PositionHasher{}(std::get<0>(p));
         std::size_t time_hash = std::hash<int>{}(std::get<1>(p));
-        return pos_hash ^ (time_hash << 1); // Combine the hashes
+        return hashCombine(pos_hash, time_hash); // Combine using hashCombine
+    }
+
+    std::size_t hashCombine(std::size_t lhs, std::size_t rhs) const {
+        lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+        return lhs;
+    }
+};
+
+struct MetaConstraint {
+    std::unordered_set<int> agents; // Set of agent indices involved in the meta-agent
+    Position position;
+    int time;
+
+    MetaConstraint(std::unordered_set<int> agents, Position position, int time)
+        : agents(std::move(agents)), position(position), time(time) {}
+
+    bool operator==(const MetaConstraint& other) const {
+        return agents == other.agents && position == other.position && time == other.time;
+    }
+};
+
+// Hash function for MetaConstraint to use in unordered containers
+struct MetaConstraintHasher {
+    std::size_t operator()(const MetaConstraint& mc) const {
+        std::size_t seed = 0;
+        for (const auto& agent : mc.agents) {
+            seed ^= std::hash<int>()(agent);
+        }
+        return seed ^ std::hash<int>()(mc.position.x) ^ std::hash<int>()(mc.position.y) ^ std::hash<int>()(mc.time);
     }
 };
 
 struct Node {
     std::vector<std::vector<Position>> paths;
     mutable std::unordered_map<int, std::unordered_set<Constraint, ConstraintHasher>> constraints; // Set of constraints per king
+    std::unordered_set<MetaConstraint, MetaConstraintHasher> metaConstraints;
+    std::unordered_map<int,int> numConflicts;
+    int totalConflicts = 0;
     int cost;
-
+    // std::unordered_map<int, std::vector<std::vector<int>>> traffic;
     Node(int k) : paths(k), cost(0) {}
 };
+
+struct TrafficAwarePathCacheHasher {
+    std::size_t operator()(const std::tuple<Position, Position, std::size_t>& key) const {
+        const auto& [start, target, trafficHash] = key;
+        std::size_t hash = PositionHasher{}(start) ^ PositionHasher{}(target);
+        return hash ^ trafficHash;
+    }
+};
+
+
+
+
+
 
 struct CompareNode {
     bool operator()(const Node& a, const Node& b) const {
@@ -78,11 +124,51 @@ struct CompareNode {
     }
 };
 
-struct NodeComparator {
-    bool operator()(const Node& a, const Node& b) {
-        return a.cost < b.cost;
+struct PathCacheHasher {
+    // Hash a single Position object
+    std::size_t hashPosition(const Position& pos) const {
+        return std::hash<int>{}(pos.x) ^ std::hash<int>{}(pos.y);
+    }
+
+    // Hash a set of constraints
+    std::size_t hashConstraints(const std::unordered_set<Constraint, ConstraintHasher>& constraints) const {
+        std::size_t hash = 0;
+        for (const auto& constraint : constraints) {
+            hash ^= ConstraintHasher{}(constraint) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        }
+        return hash;
+    }
+
+    std::size_t operator()(const std::tuple<Position, Position, std::unordered_set<Constraint, ConstraintHasher>>& key) const {
+        const auto& [start, target, constraints] = key;
+
+        // Combine hashes of the start position, target position, and constraints
+        std::size_t hash = hashPosition(start);
+        hash ^= hashPosition(target) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        hash ^= hashConstraints(constraints) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+
+        return hash;
     }
 };
+
+
+struct Statistics {
+        int expandedNodes = 0;
+        int generatedNodes = 0;
+        int cost = 0;
+        int iterations = 0;
+        int cacheHits = 0;
+};
+
+
+struct ConflictHasher {
+    std::size_t operator()(const std::pair<std::tuple<int, int, int, int>, std::tuple<int, int, int, int>>& c) const {
+        auto hasher = std::hash<int>();
+        return hasher(std::get<0>(c.first)) ^ hasher(std::get<1>(c.first)) ^ hasher(std::get<2>(c.first)) ^ hasher(std::get<3>(c.first))
+             ^ hasher(std::get<0>(c.second)) ^ hasher(std::get<1>(c.second)) ^ hasher(std::get<2>(c.second)) ^ hasher(std::get<3>(c.second));
+    }
+};
+
 
 struct Conflict {
     int king1, king2, time;

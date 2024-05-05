@@ -8,18 +8,24 @@
 #include <optional>
 #include <algorithm>
 #include <queue>
+#include <MetaAgent.h>
+
 class ChessGame {
 
 public:
     ChessGame(int n, const std::vector<std::vector<bool>>& initialGrid, std::vector<King>& allKings);
     bool findPathsCBS();
     void writePathsToFile(const std::string& filename);
+    Statistics stats;
+
 
 private:
+
+    std::unordered_map<std::tuple<Position, Position, std::unordered_set<Constraint, ConstraintHasher>>, std::vector<Position>, PathCacheHasher> pathCache;
     int size;
     std::vector<std::vector<int>> grid; // Changed from bool to int
     std::vector<King> kings;
-
+    std::size_t generateTrafficSignature(const std::vector<std::vector<int>>& traffic) ;
     bool noSolution = false;
     void updateAdjacentCells(Position pos, bool increment);
     bool isFree(const Position& pos) const;
@@ -40,9 +46,16 @@ private:
     std::unordered_map<Position, int, PositionHasher> calculateDijkstraMap(const Position& goal, const std::vector<std::vector<int>>& grid);
     int calculateCost(const std::vector<std::vector<Position>>& paths);
     int manhattanDistance(const Position& a, const Position& b);
-    int calculateNumberOfConflicts(const std::vector<std::vector<Position>>& paths);
+    int updateTraffic(const std::vector<std::vector<Position>>& paths);
     bool isValidKingMove(const Position& current, const Position& next) ;
     bool isPathValid(const std::vector<Position>& path) ;
+    std::vector<std::vector<int>> traffic;
+    bool checkFutureConstraints(const Position toCheck, const int currTimeStep, const Node curr, const int kingIndex);
+    bool findCardinalConflict( Node& node, const std::vector<King>& kings, std::tuple<int, int, int, int>& conflict1, std::tuple<int, int, int, int>& conflict2, int& cardinality);
+    std::vector<Position> lowLevelMetaAgentSearch(std::vector<int> metaAgent, int startTime, const Node curr, int& startTimeStep) ;
+    int calculateCost(const MetaAgent::MetaState& state);
+    int calculateNumberOfConflictsPerAgent( Node& node, const std::vector<std::vector<Position>>& paths, int k1);
+    void initializeTrafficTable(Node& node, int rows, int cols);
 };
 
 #endif // CHESSGAME_H
